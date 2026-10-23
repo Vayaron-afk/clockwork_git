@@ -133,6 +133,8 @@ public partial class MainWindow
         if (files.Count == 1)
         {
             menu.Items.Add(Item("Open in compare window", () => OpenCompare(first)));
+            menu.Items.Add(Item("History…", () => OpenHistory(first, blame: false), !first.IsUntracked));
+            menu.Items.Add(Item("Blame…", () => OpenHistory(first, blame: true), !first.IsUntracked && first.Status != 'D'));
             menu.Items.Add(new Separator());
         }
         if (_filesOwner?.IsWorkingTree == true)
@@ -160,6 +162,14 @@ public partial class MainWindow
         menu.Items.Add(Item("Copy path", () => CopyText(string.Join("\n", files.Select(f => f.RelPath)))));
         menu.Open(FilesList);
         e.Handled = true;
+    }
+
+    /// <summary>File log and blame; blame starts at the selected commit, or at the working tree file.</summary>
+    void OpenHistory(FileChange f, bool blame)
+    {
+        if (_repo == null || _filesOwner == null) return;
+        var rev = _filesOwner.IsWorkingTree ? null : _filesOwner.Hash;
+        new FileHistoryWindow(_repo, f.RelPath, rev, blame).Show(this);
     }
 
     /// <summary>Resolves conflicts by taking one side entirely, then stages the result.</summary>

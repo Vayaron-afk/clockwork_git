@@ -1,0 +1,103 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="using:ClockworkGit.Controls"
+        x:Class="ClockworkGit.Views.FileHistoryWindow"
+        Title="File History" Width="1500" Height="950"
+        WindowStartupLocation="CenterOwner"
+        Background="#1e1f22" FontSize="12">
+
+  <Window.Styles>
+    <Style Selector="Button.small">
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="Padding" Value="6,1" />
+      <Setter Property="MinHeight" Value="0" />
+    </Style>
+    <Style Selector="TextBlock.hint">
+      <Setter Property="Foreground" Value="#9aa0a6" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+  </Window.Styles>
+
+  <DockPanel>
+    <Border DockPanel.Dock="Bottom" Background="#2b2d30" BorderBrush="#3c3f41" BorderThickness="0,1,0,0" Padding="6,2">
+      <TextBlock x:Name="StatusText" Text="Loading…" />
+    </Border>
+
+    <TabControl x:Name="Tabs" Margin="4,0,4,0">
+      <TabItem Header="History">
+        <Grid ColumnDefinitions="460,4,*">
+          <DockPanel>
+            <TextBlock x:Name="HistoryHeader" DockPanel.Dock="Top" Classes="hint" Margin="6,4" TextTrimming="CharacterEllipsis" />
+            <ListBox x:Name="HistoryList" Classes="dense" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+              <ListBox.ItemTemplate>
+                <DataTemplate>
+                  <Grid ColumnDefinitions="68,16,*,24,112" Height="22" ToolTip.Tip="{Binding File.RelPath}">
+                    <TextBlock Text="{Binding Commit.ShortHash}" FontFamily="Cascadia Mono,Consolas,monospace" FontSize="11" Foreground="#8a8f98" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Text="{Binding File.StatusLetter}" Foreground="{Binding File.StatusBrush}" FontWeight="Bold" VerticalAlignment="Center" />
+                    <DockPanel Grid.Column="2">
+                      <TextBlock DockPanel.Dock="Right" Text="↪" Foreground="#e0c050" IsVisible="{Binding IsRename}" ToolTip.Tip="{Binding RenameNote}" Margin="4,0" VerticalAlignment="Center" />
+                      <TextBlock Text="{Binding Commit.Subject}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                    </DockPanel>
+                    <Border Grid.Column="3" Width="18" Height="16" CornerRadius="2" Background="{Binding Commit.AvatarBrush}" ToolTip.Tip="{Binding Commit.Author}">
+                      <TextBlock Text="{Binding Commit.Initials}" FontSize="9" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <TextBlock Grid.Column="4" Text="{Binding Commit.DateText}" Foreground="#9aa0a6" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,4,0" />
+                  </Grid>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </DockPanel>
+          <GridSplitter Grid.Column="1" ResizeDirection="Columns" Background="#141517" />
+          <Grid Grid.Column="2" RowDefinitions="Auto,Auto,*">
+            <ScrollViewer MaxHeight="170">
+              <StackPanel Margin="8,6" Spacing="6">
+                <SelectableTextBlock x:Name="DetailHeader" Foreground="#a8adb4" TextWrapping="Wrap" />
+                <SelectableTextBlock x:Name="DetailMessage" FontWeight="SemiBold" TextWrapping="Wrap" />
+              </StackPanel>
+            </ScrollViewer>
+            <Border Grid.Row="1" Background="#2b2d30" BorderBrush="#3c3f41" BorderThickness="0,1" Padding="6,3">
+              <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
+                  <Button x:Name="BlameRevisionButton" Classes="small" Content="Blame at this revision" Click="OnBlameAtRevision" />
+                  <Button x:Name="CompareButton" Classes="small" Content="Open in compare window" Click="OnOpenCompare" />
+                </StackPanel>
+                <TextBlock x:Name="DiffTitle" FontWeight="SemiBold" Foreground="#c8c8c8" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+              </DockPanel>
+            </Border>
+            <Panel Grid.Row="2">
+              <ListBox x:Name="DiffList" Classes="dense diff" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                       ItemTemplate="{StaticResource DiffRowTemplate}" />
+              <ui:ImageCompareView x:Name="ImageView" IsVisible="False" />
+            </Panel>
+          </Grid>
+        </Grid>
+      </TabItem>
+
+      <TabItem Header="Blame">
+        <DockPanel>
+          <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="6,4">
+            <Button x:Name="BlameBackButton" Classes="small" Content="← Back" Click="OnBlameBack" IsEnabled="False" ToolTip.Tip="Return to the previous blame" />
+            <TextBlock x:Name="BlameTitle" Classes="hint" />
+          </StackPanel>
+          <TextBlock DockPanel.Dock="Top" Classes="hint" Margin="6,0,6,4" FontSize="11"
+                     Text="Double-click a line to open its commit in History. Right-click → Blame before this change digs one step back. The bar on the left is warmer for newer changes." />
+          <ListBox x:Name="BlameList" Classes="dense diff" SelectionMode="Multiple" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <Grid ColumnDefinitions="6,200,104,48,*" Height="17" ToolTip.Tip="{Binding Tip}">
+                  <Border Background="{Binding AgeBrush}" />
+                  <TextBlock Grid.Column="1" Text="{Binding Header}" Foreground="#c0c4ca" FontSize="11" Margin="6,0,4,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Grid.Column="2" Text="{Binding DateText}" Foreground="#8a8f98" FontSize="11" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="3" Classes="lineNo" Text="{Binding LineNo}" />
+                  <Border Grid.Column="4" ClipToBounds="True">
+                    <TextBlock Classes="mono" Text="{Binding Text}" Margin="4,0" />
+                  </Border>
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </DockPanel>
+      </TabItem>
+    </TabControl>
+  </DockPanel>
+</Window>

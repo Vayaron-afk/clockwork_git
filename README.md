@@ -27,6 +27,13 @@ Git-клиент для личного пользования в духе SmartG
 - Stash: save, apply, pop, drop.
 - Конфликты: плашка Continue/Abort для merge/cherry-pick/revert/rebase, «take ours / take theirs».
 
+**История файла и Blame** — в контекстном меню файла «History…» / «Blame…»
+- History: коммиты, менявшие файл (`git log --follow`, с переименованиями), детали и diff выбранного коммита,
+  для картинок — сравнение изображений; «Blame at this revision», «Open in compare window».
+- Blame: у каждой строки коммит, автор и дата, полоса слева теплее у свежих правок. Двойной клик открывает
+  коммит строки в History; «Blame before this change» показывает файл до правки, давшей эту строку
+  (как Investigate в SmartGit), кнопка «← Back» возвращает назад.
+
 **Unity**
 - В diff `.mat`, `.prefab`, `.unity`, `.asset`, `.asmdef` и других файлов со ссылками `guid: …` справа от строки
   показывается имя ассета: «→ ash_body_basecolor.png», полный путь — во всплывающей подсказке. Индекс GUID → путь
@@ -87,7 +94,7 @@ dotnet publish -c Release -r win-x64 --self-contained false -o publish
 | `Git/` | `GitRunner` (запуск git без интерактивных запросов), `GitRepo` (partial: история, diff, LFS), `GraphBuilder` (раскладка графа по линиям), `DiffParser` (unified diff → строки side-by-side) |
 | `Models/` | Данные: коммиты, ссылки, изменённые файлы, строки diff, LFS-записи |
 | `ViewModels/` | Узлы дерева веток, строки списков для привязки в XAML |
-| `Views/` | Окна: `MainWindow` (partial по областям: Repositories, Refresh, Branches, Details, Operations, ContextMenus), `FileCompareWindow`, `LfsWindow`, диалоги |
+| `Views/` | Окна: `MainWindow` (partial по областям: Repositories, Refresh, Branches, Details, Staging, Operations, ContextMenus), `FileCompareWindow`, `FileHistoryWindow`, `LfsWindow`, диалоги |
 | `Controls/` | Отрисовка графа, текст строки diff с подсветкой, полоса-обзор, сравнение картинок |
 | `Imaging/` | Декодирование (Skia, TGA, Magick.NET), попиксельная разница, перенос в Avalonia |
 | `Services/` | Настройки, сценарии Track/Untrack для LFS |
