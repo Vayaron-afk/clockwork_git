@@ -1,3 +1,3 @@
 namespace ClockworkGit.ViewModels;
 
-public enum NodeKind { Group, Head, Local, Remote, Tag, Stash }
+public enum NodeKind { Group, Head, Local, Remote, Tag, Stash, Recyclable }

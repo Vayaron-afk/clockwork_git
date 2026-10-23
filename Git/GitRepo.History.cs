@@ -120,6 +120,68 @@ public sealed partial class GitRepo
         return list.OrderBy(f => f.RelPath, StringComparer.OrdinalIgnoreCase).ToList();
     }
 
+    /// <summary>
+    /// Newest commits of unreachable chains that only the reflog still knows (SmartGit's "Recyclable Commits"),
+    /// newest first. Git prunes them when the reflog expires (90 days by default).
+    /// </summary>
+    public async Task<List<RecyclableCommit>> RecyclableCommits(int limit = 200)
+    {
+        var r = await Run("-c", "log.showSignature=false", "log", "--reflog", "--date-order", "-n5000",
+            "--format=%H%x1f%P%x1f%an%x1f%ae%x1f%at%x1f%s", "--not", "--all");
+        if (!r.Ok) return new();
+        var commits = new List<CommitInfo>();
+        foreach (var line in r.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var p = line.TrimEnd('\r').Split('\x1f');
+            if (p.Length < 6) continue;
+            commits.Add(new CommitInfo
+            {
+                Hash = p[0],
+                Parents = p[1].Split(' ', StringSplitOptions.RemoveEmptyEntries),
+                Author = p[2],
+                Email = p[3],
+                Date = DateTimeOffset.FromUnixTimeSeconds(long.TryParse(p[4], out var t) ? t : 0),
+                Subject = p[5],
+            });
+        }
+        if (commits.Count == 0) return new();
+
+        // Tips: unreachable commits that are not the parent of another unreachable commit.
+        var parents = commits.SelectMany(c => c.Parents).ToHashSet();
+        var tips = commits.Where(c => !parents.Contains(c.Hash)).Take(limit).ToList();
+        var reasons = await LostReasons(tips.Select(c => c.Hash).ToHashSet());
+        return tips.Select(c => new RecyclableCommit(c, reasons.GetValueOrDefault(c.Hash, ""))).ToList();
+    }
+
+    /// <summary>
+    /// For each commit: the reflog entry right after it on the same ref, i.e. what moved the ref away from it.
+    /// Branch reflogs are preferred over HEAD's, whose entries are mostly checkouts.
+    /// </summary>
+    async Task<Dictionary<string, string>> LostReasons(HashSet<string> hashes)
+    {
+        var r = await Run("log", "-g", "--all", "--format=%H%x1f%gD%x1f%gs");
+        var result = new Dictionary<string, string>();
+        var fromHead = new HashSet<string>();
+        var previousOnRef = new Dictionary<string, string>(); // ref → subject of its newer entry
+        foreach (var line in r.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var p = line.TrimEnd('\r').Split('\x1f');
+            if (p.Length < 3) continue;
+            var refName = p[1][..Math.Max(0, p[1].IndexOf("@{", StringComparison.Ordinal))];
+            if (hashes.Contains(p[0]) && previousOnRef.TryGetValue(refName, out var lostBy))
+            {
+                var isHead = refName == "HEAD";
+                if (!result.ContainsKey(p[0]) || (fromHead.Contains(p[0]) && !isHead))
+                {
+                    result[p[0]] = lostBy;
+                    if (isHead) fromHead.Add(p[0]); else fromHead.Remove(p[0]);
+                }
+            }
+            previousOnRef[refName] = p[2];
+        }
+        return result;
+    }
+
     /// <summary>What a commit is compared against: its first parent, or the empty tree for a root commit.</summary>
     public static string BaseOf(CommitInfo c) => c.Parents.Length > 0 ? c.Parents[0] : EmptyTree;
 

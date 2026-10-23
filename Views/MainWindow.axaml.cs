@@ -22,6 +22,9 @@ public partial class MainWindow : Window
     List<FileChange> _workFiles = new();
     List<RefInfo> _refs = new();
     List<string> _remotes = new();
+    List<RecyclableCommit> _recyclable = new();
+    /// <summary>Commit to select once the graph reloads after a branch-tree checkbox changed.</summary>
+    string? _selectAfterReload;
     string? _currentBranch, _headHash;
     /// <summary>File to reselect after a refresh rebuilds the Files list.</summary>
     string? _pendingFile;

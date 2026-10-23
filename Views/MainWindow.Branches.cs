@@ -88,6 +88,20 @@ public partial class MainWindow
             roots.Add(group);
         }
 
+        if (_recyclable.Count > 0)
+        {
+            var group = Node("recyclable", NodeKind.Group, $"Recyclable Commits ({_recyclable.Count})");
+            foreach (var r in _recyclable)
+            {
+                var c = r.Commit;
+                var detail = r.Reason.Length > 0 ? $"({r.Reason})" : "";
+                // The hash doubles as the "ref": checking the node shows the commit's chain in the graph.
+                group.Children.Add(Node("recyclable:" + c.Hash, NodeKind.Recyclable, $"{c.ShortHash} {c.Subject}", detail,
+                    fullRef: c.Hash, shortName: c.Hash));
+            }
+            roots.Add(group);
+        }
+
         BranchTree.ItemsSource = roots;
     }
 
@@ -105,15 +119,32 @@ public partial class MainWindow
             if (n.IsChecked && !shown.Contains(n.FullRef)) shown.Add(n.FullRef);
             if (!n.IsChecked) shown.Remove(n.FullRef);
             _settings.Save();
-            _ = ReloadLog((GraphList.SelectedItem as CommitInfo)?.Hash);
+            var select = _selectAfterReload ?? (GraphList.SelectedItem as CommitInfo)?.Hash;
+            _selectAfterReload = null;
+            _ = ReloadLog(select);
         }
     }
 
     async void OnBranchDoubleTapped(object? sender, TappedEventArgs e)
     {
-        if ((e.Source as Control)?.DataContext is BranchNode { Kind: NodeKind.Local or NodeKind.Remote, IsCurrent: false } n)
-            await CheckoutBranch(n);
+        if ((e.Source as Control)?.DataContext is not BranchNode n) return;
+        if (n is { Kind: NodeKind.Local or NodeKind.Remote, IsCurrent: false }) await CheckoutBranch(n);
+        else if (n.Kind == NodeKind.Recyclable) await ShowRecyclableInGraph(n);
     }
+
+    /// <summary>Adds the commit's chain to the graph (if needed) and selects it.</summary>
+    async Task ShowRecyclableInGraph(BranchNode n)
+    {
+        if (n.IsChecked)
+        {
+            await ReloadLog(n.ShortName);
+            return;
+        }
+        _selectAfterReload = n.ShortName;
+        n.IsChecked = true; // reloads the log via OnBranchNodeChanged
+    }
+
+    RecyclableCommit? RecyclableOf(BranchNode n) => _recyclable.FirstOrDefault(r => r.Commit.Hash == n.ShortName);
 
     void OnBranchContext(object? sender, ContextRequestedEventArgs e)
     {
@@ -165,6 +196,28 @@ public partial class MainWindow
                         await Do(() => Exec("stash", "drop", n.ShortName!));
                 }));
                 break;
+            case NodeKind.Recyclable when RecyclableOf(n) is { } recyclable:
+                var commit = recyclable.Commit;
+                menu.Items.Add(Item("Show in graph", () => ShowRecyclableInGraph(n)));
+                menu.Items.Add(Item("Create branch here…", async () =>
+                {
+                    var name = await Dialogs.Prompt(this, "Create branch", $"Branch name for {commit.ShortHash} (not checked out):");
+                    if (!string.IsNullOrWhiteSpace(name)) await Do(() => Exec("branch", name.Trim(), commit.Hash));
+                }));
+                menu.Items.Add(Item($"Cherry-pick to '{cur}'", () => CherryPick([commit], null), _currentBranch != null));
+                menu.Items.Add(Item($"Restore: reset '{cur}' to here…", async () =>
+                {
+                    if (await Dialogs.Confirm(this, "Restore commit",
+                            $"Move '{cur}' to {commit.ShortHash} \"{commit.Subject}\"?\n\n" +
+                            "Uses git reset --keep: local changes are kept, and git refuses if they would be overwritten. " +
+                            "Commits currently on the branch after the common point become recyclable themselves.", "Reset"))
+                        await Do(() => Exec("reset", "--keep", commit.Hash));
+                }));
+                menu.Items.Add(new Separator());
+                menu.Items.Add(Item("Copy hash", () => CopyText(commit.Hash)));
+                menu.Open(BranchTree);
+                e.Handled = true;
+                return;
             default:
                 return;
         }

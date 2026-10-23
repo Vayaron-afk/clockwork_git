@@ -1,3 +1,3 @@
 namespace ClockworkGit.Models;
 
-public enum RefKind { Head, Local, Remote, Tag }
+public enum RefKind { Head, Local, Remote, Tag, Recyclable }

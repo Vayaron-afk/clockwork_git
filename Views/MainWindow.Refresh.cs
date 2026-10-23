@@ -20,7 +20,8 @@ public partial class MainWindow
         var tBranch = repo.CurrentBranch();
         var tHead = repo.HeadHash();
         var tRemotes = repo.Remotes();
-        await Task.WhenAll(tRefs, tStashes, tStatus, tBranch, tHead, tRemotes);
+        var tRecyclable = repo.RecyclableCommits();
+        await Task.WhenAll(tRefs, tStashes, tStatus, tBranch, tHead, tRemotes, tRecyclable);
         if (gen != _refreshGen || repo != _repo) return;
 
         _refs = tRefs.Result;
@@ -28,6 +29,7 @@ public partial class MainWindow
         _currentBranch = tBranch.Result;
         _headHash = tHead.Result;
         _remotes = tRemotes.Result;
+        _recyclable = tRecyclable.Result;
 
         BuildBranchTree(tStashes.Result);
         var repoItem = _repos.FirstOrDefault(r => SamePath(r.Path, repo.Path));
@@ -59,13 +61,20 @@ public partial class MainWindow
         var repo = _repo;
         if (repo == null) return;
         var gen = ++_logGen;
-        var refs = ShownRefs().Where(r => r == "HEAD" || _refs.Any(x => x.FullName == r)).ToList();
+        // Refs that no longer exist are skipped; checked recyclable commits are passed by hash.
+        var refs = ShownRefs()
+            .Where(r => r == "HEAD" || _refs.Any(x => x.FullName == r) || _recyclable.Any(c => c.Commit.Hash == r))
+            .ToList();
         if (refs.Count == 0) refs.Add("HEAD");
 
         var commits = _headHash == null && refs.All(r => r == "HEAD")
             ? new List<CommitInfo>()
             : await repo.Log(refs, LogLimit, _remotes);
         if (gen != _logGen || repo != _repo) return;
+
+        var recyclable = _recyclable.Select(c => c.Commit.Hash).ToHashSet();
+        foreach (var c in commits.Where(c => recyclable.Contains(c.Hash)))
+            c.Refs.Add(new RefBadge("♻ recyclable", RefKind.Recyclable));
 
         var headLoaded = _headHash != null && commits.Any(c => c.Hash == _headHash);
         commits.Insert(0, CommitInfo.WorkingTree(headLoaded ? _headHash : null, _workFiles.Count));

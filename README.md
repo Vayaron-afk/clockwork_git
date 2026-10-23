@@ -25,6 +25,10 @@ Git-клиент для личного пользования в духе SmartG
 - Из графа: checkout коммита, создание ветки/тега, cherry-pick в текущую или выбранную ветку, revert,
   reset soft/mixed/hard. Из дерева: checkout (в т.ч. remote с трекингом), merge, rebase, rename, delete.
 - Stash: save, apply, pop, drop.
+- Recyclable Commits: коммиты, потерянные после Undo/amend/reset/rebase или удаления ветки, но ещё живые в reflog
+  (`git log --reflog --not --all`), с причиной («reset: moving to HEAD~1», «commit (amend)»). Галочка или двойной
+  клик выводит коммит в граф с меткой ♻; можно создать на нём ветку, сделать cherry-pick или вернуть ветку на него
+  (`reset --keep`, локальные правки не теряются).
 - Конфликты: плашка Continue/Abort для merge/cherry-pick/revert/rebase, «take ours / take theirs».
 
 **История файла и Blame** — в контекстном меню файла «History…» / «Blame…»
