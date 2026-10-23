@@ -79,6 +79,7 @@ public partial class MainWindow
                     await Do(() => Exec("reset", "--hard", c.Hash));
             }));
             menu.Items.Add(reset);
+            menu.Items.Add(Item("Interactive rebase from here…", () => InteractiveRebaseFrom(c), _currentBranch != null));
             menu.Items.Add(new Separator());
             menu.Items.Add(Item("Copy hash", () => CopyText(c.Hash)));
             menu.Items.Add(Item("Copy subject", () => CopyText(c.Subject)));

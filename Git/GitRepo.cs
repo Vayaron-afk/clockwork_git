@@ -30,6 +30,9 @@ public sealed partial class GitRepo
 
     public Task<GitResult> RunWithInput(string input, params string[] args) => GitRunner.RunWithInputAsync(Path, input, args);
 
+    public Task<GitResult> RunWithEnv(IReadOnlyDictionary<string, string> env, params string[] args) =>
+        GitRunner.RunWithEnvAsync(Path, env, args);
+
     public RepoState GetState()
     {
         if (File.Exists(System.IO.Path.Combine(GitDir, "MERGE_HEAD"))) return RepoState.Merging;

@@ -56,7 +56,22 @@ public partial class MainWindow
         var head = _refs.FirstOrDefault(r => r.IsHead);
         if (head is { Upstream.Length: > 0 })
         {
-            await Exec("push");
+            SetStatus("git push …");
+            var r = await _repo!.Run("push");
+            if (r.Ok)
+            {
+                SetStatus(r.LastLine == null ? "Done: git push" : $"git push: {r.LastLine}");
+                return;
+            }
+            // After a rebase or amend of pushed commits the remote rejects a plain push.
+            var rejected = r.Error.Contains("[rejected]") || r.Error.Contains("non-fast-forward") || r.Error.Contains("fetch first");
+            if (rejected && await Dialogs.Confirm(this, "Push rejected",
+                    $"The remote branch {head.UpstreamShort} has commits that '{_currentBranch}' does not (usually after a rebase or amend).\n\n" +
+                    "Force push with lease? It overwrites the remote branch, but refuses if someone else pushed there " +
+                    "since your last fetch.\n\n" + r.Message, "Force push"))
+                await Exec("push", "--force-with-lease");
+            else if (!rejected)
+                await Dialogs.ShowMessage(this, "git push failed", r.Message);
             return;
         }
         var remote = _remotes.FirstOrDefault();

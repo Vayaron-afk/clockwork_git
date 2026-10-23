@@ -24,6 +24,12 @@ Git-клиент для личного пользования в духе SmartG
   мышью с Ctrl/Shift; патч из выбранных строк применяется через `git apply --cached`.
 - Из графа: checkout коммита, создание ветки/тега, cherry-pick в текущую или выбранную ветку, revert,
   reset soft/mixed/hard. Из дерева: checkout (в т.ч. remote с трекингом), merge, rebase, rename, delete.
+- Интерактивный rebase: ПКМ по коммиту → «Interactive rebase from here…». Для каждого коммита Pick / Reword /
+  Squash / Fixup / Drop, перестановка (Alt+↑/↓), правка сообщения. Выполняется настоящим `git rebase -i --autostash`
+  без редактора: todo подставляется через `GIT_SEQUENCE_EDITOR`, сообщения — через `exec git commit --amend -F`.
+  Merge-коммиты в диапазоне не поддерживаются; если коммиты уже на remote — предупреждение. При конфликте работает
+  плашка Continue/Abort, а прежняя история остаётся в Recyclable Commits.
+- Push после rebase/amend: если remote отклонил push, клиент предлагает `push --force-with-lease`.
 - Stash: save, apply, pop, drop.
 - Recyclable Commits: коммиты, потерянные после Undo/amend/reset/rebase или удаления ветки, но ещё живые в reflog
   (`git log --reflog --not --all`), с причиной («reset: moving to HEAD~1», «commit (amend)»). Галочка или двойной

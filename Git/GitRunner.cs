@@ -6,7 +6,7 @@ namespace ClockworkGit.Git;
 /// <summary>Runs the git CLI. Never prompts: no terminal prompts, no editors.</summary>
 public static class GitRunner
 {
-    static ProcessStartInfo CreateStartInfo(string repo, IEnumerable<string> args)
+    static ProcessStartInfo CreateStartInfo(string repo, IEnumerable<string> args, IReadOnlyDictionary<string, string>? env = null)
     {
         var psi = new ProcessStartInfo("git")
         {
@@ -30,16 +30,25 @@ public static class GitRunner
         psi.Environment["GIT_EDITOR"] = "true";
         psi.Environment["GIT_SEQUENCE_EDITOR"] = "true";
         psi.Environment["GIT_MERGE_AUTOEDIT"] = "no";
+        if (env != null)
+            foreach (var (name, value) in env) psi.Environment[name] = value;
         return psi;
     }
 
     public static Task<GitResult> RunAsync(string repo, params string[] args) => RunWithInputAsync(repo, null, args);
 
-    public static async Task<GitResult> RunWithInputAsync(string repo, string? input, params string[] args)
+    public static Task<GitResult> RunWithInputAsync(string repo, string? input, params string[] args) =>
+        RunCoreAsync(repo, input, null, args);
+
+    /// <summary>Runs with extra environment variables, e.g. a scripted GIT_SEQUENCE_EDITOR for interactive rebase.</summary>
+    public static Task<GitResult> RunWithEnvAsync(string repo, IReadOnlyDictionary<string, string> env, params string[] args) =>
+        RunCoreAsync(repo, null, env, args);
+
+    static async Task<GitResult> RunCoreAsync(string repo, string? input, IReadOnlyDictionary<string, string>? env, string[] args)
     {
         try
         {
-            using var p = Process.Start(CreateStartInfo(repo, args))!;
+            using var p = Process.Start(CreateStartInfo(repo, args, env))!;
             var output = p.StandardOutput.ReadToEndAsync();
             var error = p.StandardError.ReadToEndAsync();
             if (input != null) await p.StandardInput.WriteAsync(input);
