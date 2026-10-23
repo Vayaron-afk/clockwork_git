@@ -19,6 +19,9 @@ Git-клиент для личного пользования в духе SmartG
 - Pull, Sync (pull + push), Push (с `-u` для новой ветки), Fetch.
 - Commit / Amend / Commit & Push, Undo Last Commit (`reset --soft`, сообщение предлагается снова).
 - Stage, Unstage, Discard (с подтверждением; новые файлы удаляются с диска только после него).
+- Частичный stage: в diff рабочей копии режимы Unstaged / Staged / All, кнопки «Stage block» (`Ctrl+B`),
+  «Stage lines» (`Ctrl+L`), в режиме Staged — Unstage, в Unstaged — «Discard lines…». Строки выделяются
+  мышью с Ctrl/Shift; патч из выбранных строк применяется через `git apply --cached`.
 - Из графа: checkout коммита, создание ветки/тега, cherry-pick в текущую или выбранную ветку, revert,
   reset soft/mixed/hard. Из дерева: checkout (в т.ч. remote с трекингом), merge, rebase, rename, delete.
 - Stash: save, apply, pop, drop.

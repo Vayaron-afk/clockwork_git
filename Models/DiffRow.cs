@@ -26,6 +26,10 @@ public sealed class DiffRow
     public int LeftHiLength { get; init; }
     public int RightHiStart { get; init; }
     public int RightHiLength { get; init; }
+    /// <summary>Index of the "-" line in the raw unified diff, -1 if none; used to build partial patches.</summary>
+    public int LeftLine { get; init; } = -1;
+    /// <summary>Index of the "+" line in the raw unified diff, -1 if none.</summary>
+    public int RightLine { get; init; } = -1;
 
     public bool HasLeft => LeftNo.Length > 0;
     public bool HasRight => RightNo.Length > 0;

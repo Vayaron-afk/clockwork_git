@@ -42,7 +42,7 @@ public partial class MainWindow
             var untracked = files.Count(f => f.IsUntracked);
             DetailHeader.Text = files.Count == 0
                 ? "Nothing to commit, working tree clean."
-                : $"{files.Count} changed: {staged} staged, {files.Count - staged - untracked} unstaged, {untracked} untracked";
+                : $"{files.Count} changed: {staged} staged, {files.Count(f => f.WorkStatus != ' ' && !f.IsUntracked)} unstaged, {untracked} untracked";
             DetailMessage.Text = "Working Tree / Index";
         }
         else
@@ -146,6 +146,8 @@ public partial class MainWindow
         var gen = ++_diffGen;
         var repo = _repo;
         var owner = _filesOwner;
+        _shownDiff = null;
+        StagePanel.IsVisible = false; // PickDiffMode shows it for working-tree text files
         OpenCompareButton.IsEnabled = f != null && owner != null;
         SvgAsText.IsVisible = f != null && ImageFormats.IsTextImage(f.RelPath);
         if (f == null || repo == null || owner == null)
@@ -169,11 +171,13 @@ public partial class MainWindow
             return;
         }
 
+        var mode = owner.IsWorkingTree ? PickDiffMode(f) : WorkTreeDiffMode.All;
         DiffList.IsVisible = true;
         ImageView.IsVisible = false;
-        var rows = await repo.DiffRows(owner, f, _headHash != null);
+        var result = await repo.DiffRows(owner, f, _headHash != null, mode: mode);
         if (gen != _diffGen) return;
-        DiffList.ItemsSource = rows;
+        _shownDiff = result;
+        DiffList.ItemsSource = result.Rows;
     }
 
     void OnOpenCompare(object? sender, RoutedEventArgs e) => OpenCompare(SingleSelectedFile());

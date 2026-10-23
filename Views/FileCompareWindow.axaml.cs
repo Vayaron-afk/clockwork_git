@@ -75,7 +75,7 @@ public partial class FileCompareWindow : Window
             return;
         }
 
-        var rows = await _repo.DiffRows(_owner, _file, _hasHead, fullFile: true, ignoreWhitespace: IgnoreWs.IsChecked == true);
+        var rows = (await _repo.DiffRows(_owner, _file, _hasHead, fullFile: true, ignoreWhitespace: IgnoreWs.IsChecked == true)).Rows;
         if (gen != _loadGen) return;
         _rows = rows;
         _changeStarts = Enumerable.Range(0, rows.Count)

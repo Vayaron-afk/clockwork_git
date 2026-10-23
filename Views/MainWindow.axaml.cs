@@ -30,7 +30,12 @@ public partial class MainWindow : Window
     /// <summary>The commit (or working tree) whose files are listed.</summary>
     CommitInfo? _filesOwner;
     List<FileChange> _ownerFiles = new();
-    bool _busy, _resortingFiles;
+    /// <summary>Diff shown in the bottom panel; the raw text is what partial staging builds patches from.</summary>
+    DiffResult? _shownDiff;
+    WorkTreeDiffMode _diffMode = WorkTreeDiffMode.Unstaged;
+    /// <summary>File the diff mode was chosen for; another file gets a fresh automatic choice.</summary>
+    string? _diffModeFile;
+    bool _busy, _resortingFiles, _updatingDiffMode;
     // Generation counters drop results of async loads that were superseded by a newer one.
     int _refreshGen, _logGen, _detailsGen, _diffGen;
     DateTime _lastRefresh;
@@ -67,6 +72,10 @@ public partial class MainWindow : Window
         };
         LfsOnly.IsCheckedChanged += (_, _) => RebindFiles();
         SvgAsText.IsCheckedChanged += (_, _) => ShowDiff(SingleSelectedFile());
+        ModeUnstaged.IsCheckedChanged += (_, _) => OnDiffModeChosen(ModeUnstaged, WorkTreeDiffMode.Unstaged);
+        ModeStaged.IsCheckedChanged += (_, _) => OnDiffModeChosen(ModeStaged, WorkTreeDiffMode.Staged);
+        ModeAll.IsCheckedChanged += (_, _) => OnDiffModeChosen(ModeAll, WorkTreeDiffMode.All);
+        DiffList.ContextRequested += OnDiffContext;
 
         GraphList.ContextRequested += OnGraphContext;
         BranchTree.ContextRequested += OnBranchContext;
@@ -112,6 +121,11 @@ public partial class MainWindow : Window
         {
             e.Handled = true;
             await CommitFlow();
+        }
+        else if (e.Key is (Key.B or Key.L) && e.KeyModifiers == KeyModifiers.Control && StagePanel.IsVisible)
+        {
+            e.Handled = true;
+            await ApplySelection(wholeBlocks: e.Key == Key.B, discard: false);
         }
     }
 }

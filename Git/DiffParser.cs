@@ -8,8 +8,9 @@ public static partial class DiffParser
     public const int DefaultMaxRows = 30000;
     public const int FullFileMaxRows = 300000;
 
+    /// <summary>"@@ -old[,n] +new[,n] @@ section": groups 1 = old start, 2 = new start, 3 = section text.</summary>
     [GeneratedRegex(@"^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@(.*)$")]
-    private static partial Regex HunkHeader();
+    internal static partial Regex HunkHeader();
 
     static string Clean(string s) => s.TrimEnd('\r').Replace("\t", "    ");
 
@@ -17,6 +18,7 @@ public static partial class DiffParser
     /// Turns a unified diff into side-by-side rows; removed/added blocks are paired line by line and the
     /// differing middle of each pair is highlighted. <paramref name="fullFile"/> drops hunk header rows
     /// (used with a context large enough to cover the whole file).
+    /// Rows remember which raw diff lines they came from, so a selection can be turned into a patch.
     /// </summary>
     public static List<DiffRow> SideBySide(string diff, bool fullFile = false, int maxRows = DefaultMaxRows)
     {
@@ -24,8 +26,8 @@ public static partial class DiffParser
         if (string.IsNullOrWhiteSpace(diff)) { rows.Add(DiffRow.Message("No textual changes")); return rows; }
         if (diff.Contains("\nBinary files ") || diff.StartsWith("Binary files ")) { rows.Add(DiffRow.Message("Binary file")); return rows; }
 
-        var dels = new List<(int No, string Text)>();
-        var adds = new List<(int No, string Text)>();
+        var dels = new List<(int No, string Text, int Raw)>();
+        var adds = new List<(int No, string Text, int Raw)>();
         int ln = 0, rn = 0;
         var inHunk = false;
 
@@ -49,16 +51,19 @@ public static partial class DiffParser
                     RightText = r,
                     RightBg = hasR ? DiffRow.AddedBg : DiffRow.EmptyBg,
                     LeftHiStart = ls, LeftHiLength = ll, RightHiStart = rs, RightHiLength = rl,
+                    LeftLine = hasL ? dels[i].Raw : -1,
+                    RightLine = hasR ? adds[i].Raw : -1,
                 });
             }
             dels.Clear();
             adds.Clear();
         }
 
-        foreach (var raw in diff.Split('\n'))
+        var rawLines = diff.Split('\n');
+        for (var idx = 0; idx < rawLines.Length; idx++)
         {
             if (rows.Count > maxRows) { rows.Add(DiffRow.Message("… diff truncated")); break; }
-            var line = raw.TrimEnd('\r');
+            var line = rawLines[idx].TrimEnd('\r');
             var m = HunkHeader().Match(line);
             if (m.Success)
             {
@@ -77,8 +82,8 @@ public static partial class DiffParser
             if (!inHunk || line.Length == 0) continue;
             switch (line[0])
             {
-                case '-': dels.Add((ln++, Clean(line[1..]))); break;
-                case '+': adds.Add((rn++, Clean(line[1..]))); break;
+                case '-': dels.Add((ln++, Clean(line[1..]), idx)); break;
+                case '+': adds.Add((rn++, Clean(line[1..]), idx)); break;
                 case ' ':
                     Flush();
                     var text = Clean(line[1..]);

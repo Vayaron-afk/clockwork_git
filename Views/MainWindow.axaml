@@ -33,11 +33,16 @@
       <Setter Property="MinHeight" Value="22" />
       <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
     </Style>
-    <Style Selector="CheckBox.small">
+    <Style Selector="CheckBox.small, RadioButton.small">
       <Setter Property="MinHeight" Value="0" />
       <Setter Property="MinWidth" Value="0" />
       <Setter Property="Padding" Value="0" />
       <Setter Property="Margin" Value="0,0,2,0" />
+    </Style>
+    <Style Selector="Button.small">
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="Padding" Value="6,0" />
+      <Setter Property="MinHeight" Value="0" />
     </Style>
     <Style Selector="GridSplitter">
       <Setter Property="Background" Value="#141517" />
@@ -270,14 +275,24 @@
         <Border DockPanel.Dock="Top" Classes="header">
           <DockPanel>
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="10">
+              <!-- Partial staging, working tree only: compare mode + actions on the selected diff rows. -->
+              <StackPanel x:Name="StagePanel" Orientation="Horizontal" Spacing="6" IsVisible="False">
+                <RadioButton x:Name="ModeUnstaged" Classes="small" GroupName="diffmode" Content="Unstaged" FontSize="11" ToolTip.Tip="Index ↔ working tree: what Stage adds" />
+                <RadioButton x:Name="ModeStaged" Classes="small" GroupName="diffmode" Content="Staged" FontSize="11" ToolTip.Tip="HEAD ↔ index: what Commit records" />
+                <RadioButton x:Name="ModeAll" Classes="small" GroupName="diffmode" Content="All" FontSize="11" ToolTip.Tip="HEAD ↔ working tree" />
+                <Border Width="1" Background="#3c3f41" Margin="2,2" />
+                <Button x:Name="BlockButton" Classes="small" Click="OnBlockAction" ToolTip.Tip="Whole change blocks under the selection (Ctrl+B)" />
+                <Button x:Name="LinesButton" Classes="small" Click="OnLinesAction" ToolTip.Tip="Only the selected lines (Ctrl+L)" />
+                <Button x:Name="DiscardLinesButton" Classes="small" Content="Discard lines…" Click="OnDiscardLines" ToolTip.Tip="Revert the selected lines in the working tree" />
+              </StackPanel>
               <CheckBox x:Name="SvgAsText" Classes="small" Content="As text" FontSize="11" IsVisible="False" ToolTip.Tip="Show SVG source diff instead of the picture" />
-              <Button x:Name="OpenCompareButton" Content="Open in compare window" FontSize="11" Padding="6,0" MinHeight="0" IsEnabled="False" Click="OnOpenCompare" ToolTip.Tip="Double-click a file does the same" />
+              <Button x:Name="OpenCompareButton" Classes="small" Content="Open in compare window" IsEnabled="False" Click="OnOpenCompare" ToolTip.Tip="Double-click a file does the same" />
             </StackPanel>
             <TextBlock x:Name="DiffTitle" Classes="header" Text="Changes" TextTrimming="CharacterEllipsis" />
           </DockPanel>
         </Border>
         <Panel>
-          <ListBox x:Name="DiffList" Classes="dense diff" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+          <ListBox x:Name="DiffList" Classes="dense diff" SelectionMode="Multiple" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                    ItemTemplate="{StaticResource DiffRowTemplate}" />
           <ui:ImageCompareView x:Name="ImageView" IsVisible="False" />
         </Panel>

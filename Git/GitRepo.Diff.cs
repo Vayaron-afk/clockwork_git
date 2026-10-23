@@ -4,29 +4,33 @@ namespace ClockworkGit.Git;
 public sealed partial class GitRepo
 {
     /// <summary>
-    /// Unified diff of one file: commit against its first parent, or HEAD against the working tree.
-    /// <paramref name="context"/> &lt; 0 means the whole file.
+    /// Unified diff of one file: a commit against its first parent, or for the working tree according to
+    /// <paramref name="mode"/>. <paramref name="context"/> &lt; 0 means the whole file.
     /// </summary>
-    public async Task<string> Diff(CommitInfo owner, FileChange f, int context = 3, bool ignoreWhitespace = false)
+    public async Task<string> Diff(CommitInfo owner, FileChange f, int context = 3, bool ignoreWhitespace = false,
+        WorkTreeDiffMode mode = WorkTreeDiffMode.All)
     {
         var args = new List<string> { "diff", "-M", "--no-ext-diff", "--histogram", context < 0 ? "-U999999" : $"-U{context}" };
         if (ignoreWhitespace) args.Add("--ignore-all-space");
-        if (owner.IsWorkingTree) args.Add("HEAD");
-        else { args.Add(BaseOf(owner)); args.Add(owner.Hash); }
+        if (!owner.IsWorkingTree) { args.Add(BaseOf(owner)); args.Add(owner.Hash); }
+        else if (mode == WorkTreeDiffMode.All) args.Add("HEAD");
+        else if (mode == WorkTreeDiffMode.Staged) args.Add("--cached");
+        // Unstaged: plain "git diff" compares the index with the working tree.
         args.Add("--");
-        if (f.OldPath != null) args.Add(f.OldPath);
+        if (f.OldPath != null && !(owner.IsWorkingTree && mode == WorkTreeDiffMode.Unstaged)) args.Add(f.OldPath);
         args.Add(f.RelPath);
         return (await Run(args.ToArray())).Output;
     }
 
-    /// <summary>Side-by-side rows for one file, including files git does not track yet.</summary>
-    public async Task<List<DiffRow>> DiffRows(CommitInfo owner, FileChange f, bool hasHead, bool fullFile = false, bool ignoreWhitespace = false)
+    /// <summary>Raw diff and side-by-side rows for one file, including files git does not track yet.</summary>
+    public async Task<DiffResult> DiffRows(CommitInfo owner, FileChange f, bool hasHead, bool fullFile = false,
+        bool ignoreWhitespace = false, WorkTreeDiffMode mode = WorkTreeDiffMode.All)
     {
         var max = fullFile ? DiffParser.FullFileMaxRows : DiffParser.DefaultMaxRows;
         if (owner.IsWorkingTree && (f.IsUntracked || (!hasHead && f.IndexStatus == 'A')))
-            return await Task.Run(() => DiffParser.FromNewFile(FullPath(f.RelPath), max));
-        var diff = await Diff(owner, f, fullFile ? -1 : 3, ignoreWhitespace);
-        return await Task.Run(() => DiffParser.SideBySide(diff, fullFile, max));
+            return new DiffResult("", await Task.Run(() => DiffParser.FromNewFile(FullPath(f.RelPath), max)));
+        var diff = await Diff(owner, f, fullFile ? -1 : 3, ignoreWhitespace, mode);
+        return new DiffResult(diff, await Task.Run(() => DiffParser.SideBySide(diff, fullFile, max)));
     }
 
     /// <summary>Raw bytes of the file before and after the change (LFS objects resolved); null where absent.</summary>
