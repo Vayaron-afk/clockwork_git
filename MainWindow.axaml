@@ -1,0 +1,336 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="using:ClockworkGit.UI"
+        x:Class="ClockworkGit.MainWindow"
+        Title="ClockworkGit" Width="1600" Height="960"
+        WindowStartupLocation="CenterScreen"
+        Background="#1e1f22" FontSize="12">
+
+  <Window.Styles>
+    <Style Selector="Button.tool">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Padding" Value="8,3" />
+      <Setter Property="MinWidth" Value="58" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.tool StackPanel">
+      <Setter Property="Spacing" Value="1" />
+    </Style>
+    <Style Selector="TextBlock.glyph">
+      <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets" />
+      <Setter Property="FontSize" Value="18" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.label">
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.header">
+      <Setter Property="Background" Value="#2b2d30" />
+      <Setter Property="Padding" Value="6,3" />
+      <Setter Property="BorderBrush" Value="#3c3f41" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+    </Style>
+    <Style Selector="TextBlock.header">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="#c8c8c8" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="ListBox.dense">
+      <Setter Property="Background" Value="#1e1f22" />
+      <Setter Property="Padding" Value="0" />
+    </Style>
+    <Style Selector="ListBox.dense ListBoxItem">
+      <Setter Property="Padding" Value="4,0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    </Style>
+    <Style Selector="ListBox.diff ListBoxItem">
+      <Setter Property="Padding" Value="0" />
+    </Style>
+    <Style Selector="TreeViewItem">
+      <Setter Property="MinHeight" Value="22" />
+      <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+    </Style>
+    <Style Selector="CheckBox.small">
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Margin" Value="0,0,2,0" />
+    </Style>
+    <Style Selector="GridSplitter">
+      <Setter Property="Background" Value="#141517" />
+    </Style>
+    <Style Selector="TextBlock.mono">
+      <Setter Property="FontFamily" Value="Cascadia Mono,Consolas,monospace" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.lineNo">
+      <Setter Property="FontFamily" Value="Cascadia Mono,Consolas,monospace" />
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="Foreground" Value="#6f737a" />
+      <Setter Property="HorizontalAlignment" Value="Right" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Margin" Value="0,0,6,0" />
+    </Style>
+  </Window.Styles>
+
+  <DockPanel>
+    <Menu DockPanel.Dock="Top" Background="#2b2d30">
+      <MenuItem Header="_Repository">
+        <MenuItem Header="_Add Repository…" Click="OnAddRepo" />
+        <MenuItem Header="_Refresh" InputGesture="F5" Click="OnRefresh" />
+        <MenuItem Header="Open in _Explorer" Click="OnOpenExplorer" />
+        <Separator />
+        <MenuItem Header="E_xit" Click="OnExit" />
+      </MenuItem>
+      <MenuItem Header="_Local">
+        <MenuItem Header="_Commit…" InputGesture="Ctrl+K" Click="OnCommit" />
+        <MenuItem Header="_Undo Last Commit" Click="OnUndoCommit" />
+        <Separator />
+        <MenuItem Header="_Stage" Click="OnStage" />
+        <MenuItem Header="U_nstage" Click="OnUnstage" />
+        <MenuItem Header="_Discard…" Click="OnDiscard" />
+        <Separator />
+        <MenuItem Header="Save S_tash…" Click="OnSaveStash" />
+        <MenuItem Header="_Apply Stash" Click="OnApplyStash" />
+      </MenuItem>
+      <MenuItem Header="R_emote">
+        <MenuItem Header="_Pull" Click="OnPull" />
+        <MenuItem Header="_Sync (pull + push)" Click="OnSync" />
+        <MenuItem Header="P_ush" Click="OnPush" />
+        <MenuItem Header="_Fetch all" Click="OnFetch" />
+      </MenuItem>
+    </Menu>
+
+    <Border DockPanel.Dock="Top" Background="#2b2d30" BorderBrush="#3c3f41" BorderThickness="0,0,0,1">
+      <Grid x:Name="Toolbar" ColumnDefinitions="Auto,*,Auto,*,Auto" Margin="2">
+        <StackPanel Orientation="Horizontal">
+          <Button Classes="tool" Click="OnPull" ToolTip.Tip="git pull">
+            <StackPanel><TextBlock Classes="glyph" Text="&#xE896;" Foreground="#5fbf5f" /><TextBlock Classes="label" Text="Pull" /></StackPanel>
+          </Button>
+          <Button Classes="tool" Click="OnSync" ToolTip.Tip="pull, then push">
+            <StackPanel><TextBlock Classes="glyph" Text="&#xE895;" Foreground="#e0c050" /><TextBlock Classes="label" Text="Sync" /></StackPanel>
+          </Button>
+          <Button Classes="tool" Click="OnPush" ToolTip.Tip="git push">
+            <StackPanel><TextBlock Classes="glyph" Text="&#xE898;" Foreground="#f0a030" /><TextBlock Classes="label" Text="Push" /></StackPanel>
+          </Button>
+          <Button Classes="tool" Click="OnFetch" ToolTip.Tip="git fetch --all --prune">
+            <StackPanel><TextBlock Classes="glyph" Text="&#xE753;" /><TextBlock Classes="label" Text="Fetch" /></StackPanel>
+          </Button>
+        </StackPanel>
+
+        <StackPanel Grid.Column="2" Orientation="Horizontal">
+          <Button Classes="tool" Click="OnCommit" ToolTip.Tip="Ctrl+K">
+            <StackPanel><TextBlock Classes="glyph" Text="&#xE8FB;" Foreground="#5fbf5f" /><TextBlock Classes="label" Text="Commit" /></StackPanel>
+          </Button>
+          <Button Classes="tool" Click="OnUndoCommit" ToolTip.Tip="git reset --soft HEAD~1">
+            <StackPanel><TextBlock Classes="glyph" Text="&#xE7A7;" /><TextBlock Classes="label" Text="Undo Commit" /></StackPanel>
+          </Button>
+          <Border Width="1" Background="#3c3f41" Margin="6,4" />
+          <Button Classes="tool" Click="OnStage">
+            <StackPanel><TextBlock Classes="glyph" Text="&#xE710;" /><TextBlock Classes="label" Text="Stage" /></StackPanel>
+          </Button>
+          <Button Classes="tool" Click="OnUnstage">
+            <StackPanel><TextBlock Classes="glyph" Text="&#xE738;" /><TextBlock Classes="label" Text="Unstage" /></StackPanel>
+          </Button>
+          <Button Classes="tool" Click="OnDiscard">
+            <StackPanel><TextBlock Classes="glyph" Text="&#xE74D;" Foreground="#e06060" /><TextBlock Classes="label" Text="Discard" /></StackPanel>
+          </Button>
+          <Border Width="1" Background="#3c3f41" Margin="6,4" />
+          <Button Classes="tool" Click="OnSaveStash">
+            <StackPanel><TextBlock Classes="glyph" Text="&#xE74E;" /><TextBlock Classes="label" Text="Save Stash" /></StackPanel>
+          </Button>
+          <Button Classes="tool" Click="OnApplyStash">
+            <StackPanel><TextBlock Classes="glyph" Text="&#xE77F;" /><TextBlock Classes="label" Text="Apply Stash" /></StackPanel>
+          </Button>
+        </StackPanel>
+
+        <StackPanel Grid.Column="4" Orientation="Horizontal">
+          <Button Classes="tool" Click="OnAddRepo">
+            <StackPanel><TextBlock Classes="glyph" Text="&#xE8F4;" /><TextBlock Classes="label" Text="Add Repo" /></StackPanel>
+          </Button>
+          <Button Classes="tool" Click="OnRefresh" ToolTip.Tip="F5">
+            <StackPanel><TextBlock Classes="glyph" Text="&#xE72C;" /><TextBlock Classes="label" Text="Refresh" /></StackPanel>
+          </Button>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <Border x:Name="StateBanner" DockPanel.Dock="Top" IsVisible="False" Background="#5a4712" Padding="8,4">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6">
+          <Button Content="Continue" Click="OnStateContinue" />
+          <Button Content="Abort" Click="OnStateAbort" />
+        </StackPanel>
+        <TextBlock x:Name="StateText" VerticalAlignment="Center" FontWeight="SemiBold" />
+      </DockPanel>
+    </Border>
+
+    <Border DockPanel.Dock="Bottom" Background="#2b2d30" BorderBrush="#3c3f41" BorderThickness="0,1,0,0" Padding="6,2">
+      <DockPanel>
+        <TextBlock x:Name="StatusRight" DockPanel.Dock="Right" Foreground="#a0a0a0" />
+        <TextBlock x:Name="StatusText" Text="Ready" TextTrimming="CharacterEllipsis" />
+      </DockPanel>
+    </Border>
+
+    <Grid ColumnDefinitions="270,4,*,4,440" RowDefinitions="*,4,330">
+
+      <!-- Left: repositories + branches -->
+      <Grid Grid.RowSpan="3" RowDefinitions="Auto,*,4,Auto,2*">
+        <Border Classes="header"><TextBlock Classes="header" Text="Repositories" /></Border>
+        <ListBox x:Name="ReposList" Grid.Row="1" Classes="dense">
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <StackPanel Orientation="Horizontal" Spacing="6" Height="22">
+                <TextBlock Text="&#xE8B7;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" VerticalAlignment="Center" Foreground="#c8a060" />
+                <TextBlock Text="{Binding Display}" VerticalAlignment="Center" />
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+        <GridSplitter Grid.Row="2" ResizeDirection="Rows" />
+        <Border Grid.Row="3" Classes="header"><TextBlock Classes="header" Text="Branches" /></Border>
+        <TreeView x:Name="BranchTree" Grid.Row="4" Background="#1e1f22">
+          <TreeView.ItemTemplate>
+            <TreeDataTemplate ItemsSource="{Binding Children}">
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <CheckBox Classes="small" IsChecked="{Binding IsChecked}" IsVisible="{Binding CanCheck}" ToolTip.Tip="Show in graph" />
+                <TextBlock Text="{Binding Title}" FontWeight="{Binding Weight}" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding Detail}" Foreground="#8a8f98" VerticalAlignment="Center" />
+              </StackPanel>
+            </TreeDataTemplate>
+          </TreeView.ItemTemplate>
+        </TreeView>
+      </Grid>
+      <GridSplitter Grid.Column="1" Grid.RowSpan="3" ResizeDirection="Columns" />
+
+      <!-- Center: graph -->
+      <DockPanel Grid.Column="2">
+        <Border DockPanel.Dock="Top" Classes="header">
+          <DockPanel>
+            <TextBox x:Name="FilterBox" DockPanel.Dock="Right" Width="240" Watermark="Filter (message, author, hash)" MinHeight="22" Padding="6,2" />
+            <TextBlock Classes="header" Text="Graph" />
+          </DockPanel>
+        </Border>
+        <ListBox x:Name="GraphList" Classes="dense" SelectionMode="Multiple"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <Grid ColumnDefinitions="Auto,*,26,118" Height="22">
+                <ui:GraphCell Row="{Binding ShownGraph}" />
+                <DockPanel Grid.Column="1" ClipToBounds="True">
+                  <ItemsControl DockPanel.Dock="Left" ItemsSource="{Binding Refs}" IsVisible="{Binding HasRefs}" Margin="0,0,6,0" VerticalAlignment="Center">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="3" /></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <Border Background="{Binding Background}" CornerRadius="3" Padding="5,0" Height="16">
+                          <TextBlock Text="{Binding Name}" FontSize="11" Foreground="White" VerticalAlignment="Center" />
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <TextBlock Text="{Binding Subject}" FontWeight="{Binding SubjectWeight}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                </DockPanel>
+                <Border Grid.Column="2" Width="18" Height="16" CornerRadius="2" Background="{Binding AvatarBrush}" IsVisible="{Binding HasAvatar}" ToolTip.Tip="{Binding Author}">
+                  <TextBlock Text="{Binding Initials}" FontSize="9" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <TextBlock Grid.Column="3" Text="{Binding DateText}" Foreground="#9aa0a6" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,4,0" />
+              </Grid>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </DockPanel>
+      <GridSplitter Grid.Column="3" ResizeDirection="Columns" />
+
+      <!-- Right: commit details + files -->
+      <Grid Grid.Column="4" RowDefinitions="Auto,Auto,4,Auto,*">
+        <Border Classes="header"><TextBlock Classes="header" Text="Commit" /></Border>
+        <ScrollViewer Grid.Row="1" MaxHeight="260">
+          <DockPanel Margin="8,6">
+            <Border x:Name="DetailAvatar" DockPanel.Dock="Left" Width="44" Height="44" CornerRadius="3" Margin="0,0,10,0" VerticalAlignment="Top" IsVisible="False">
+              <TextBlock x:Name="DetailAvatarText" FontSize="20" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+            <StackPanel Spacing="6">
+              <SelectableTextBlock x:Name="DetailHeader" Foreground="#a8adb4" TextWrapping="Wrap" />
+              <SelectableTextBlock x:Name="DetailMessage" FontWeight="SemiBold" TextWrapping="Wrap" />
+            </StackPanel>
+          </DockPanel>
+        </ScrollViewer>
+        <GridSplitter Grid.Row="2" ResizeDirection="Rows" />
+        <Border Grid.Row="3" Classes="header"><TextBlock Classes="header" Text="Files" /></Border>
+        <ListBox x:Name="FilesList" Grid.Row="4" Classes="dense" SelectionMode="Multiple" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <Grid ColumnDefinitions="18,2*,84,3*" Height="20" ToolTip.Tip="{Binding RelPath}">
+                <TextBlock Text="{Binding StatusLetter}" Foreground="{Binding StatusBrush}" FontWeight="Bold" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="2" Text="{Binding State}" Foreground="#9aa0a6" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="3" Text="{Binding Folder}" Foreground="#7d838a" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+              </Grid>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </Grid>
+
+      <GridSplitter Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="3" ResizeDirection="Rows" />
+
+      <!-- Bottom: diff -->
+      <DockPanel Grid.Row="2" Grid.Column="2" Grid.ColumnSpan="3">
+        <Border DockPanel.Dock="Top" Classes="header">
+          <TextBlock x:Name="DiffTitle" Classes="header" Text="Changes" />
+        </Border>
+        <Panel>
+          <ListBox x:Name="DiffList" Classes="dense diff" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <Grid ColumnDefinitions="46,*,2,46,*" Height="17">
+                  <TextBlock Classes="lineNo" Text="{Binding LeftNo}" />
+                  <Border Grid.Column="1" Background="{Binding LeftBg}" ClipToBounds="True">
+                    <TextBlock Classes="mono" Text="{Binding LeftText}" Margin="4,0" />
+                  </Border>
+                  <Border Grid.Column="2" Background="#3c3f41" />
+                  <TextBlock Grid.Column="3" Classes="lineNo" Text="{Binding RightNo}" />
+                  <Border Grid.Column="4" Background="{Binding RightBg}" ClipToBounds="True">
+                    <TextBlock Classes="mono" Text="{Binding RightText}" Margin="4,0" />
+                  </Border>
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+
+          <DockPanel x:Name="ImagePanel" IsVisible="False">
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="10" Margin="6,4">
+              <RadioButton x:Name="ImgSideBySide" GroupName="imgmode" Content="Side by side" IsChecked="True" />
+              <RadioButton x:Name="ImgOnion" GroupName="imgmode" Content="Onion skin" />
+              <RadioButton x:Name="ImgDiffMode" GroupName="imgmode" Content="Difference" />
+              <Slider x:Name="OnionSlider" Width="160" Minimum="0" Maximum="1" Value="0.5" IsVisible="False" VerticalAlignment="Center" />
+              <CheckBox x:Name="ImgActualSize" Content="1:1" />
+              <TextBlock x:Name="ImgInfo" Foreground="#9aa0a6" VerticalAlignment="Center" />
+            </StackPanel>
+            <Panel>
+              <Grid x:Name="ImgSideGrid" ColumnDefinitions="*,6,*" RowDefinitions="Auto,*">
+                <TextBlock Text="Old" Foreground="#e06060" Margin="4,0,0,2" />
+                <TextBlock Grid.Column="2" Text="New" Foreground="#5fbf5f" Margin="4,0,0,2" />
+                <Border x:Name="ImgOldHost" Grid.Row="1" ClipToBounds="True"><Image x:Name="ImgOld" /></Border>
+                <Border x:Name="ImgNewHost" Grid.Row="1" Grid.Column="2" ClipToBounds="True"><Image x:Name="ImgNew" /></Border>
+              </Grid>
+              <Border x:Name="ImgOverlayHost" IsVisible="False" ClipToBounds="True">
+                <Panel>
+                  <Image x:Name="ImgOnionOld" />
+                  <Image x:Name="ImgOnionNew" Opacity="{Binding #OnionSlider.Value}" />
+                </Panel>
+              </Border>
+              <Border x:Name="ImgDiffHost" IsVisible="False" Background="#111" ClipToBounds="True">
+                <Image x:Name="ImgDiffImage" />
+              </Border>
+            </Panel>
+          </DockPanel>
+        </Panel>
+      </DockPanel>
+    </Grid>
+  </DockPanel>
+</Window>
