@@ -48,6 +48,16 @@
     <Style Selector="ListBox.diff ListBoxItem">
       <Setter Property="Padding" Value="0" />
     </Style>
+    <Style Selector="Button.colhead">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Padding" Value="2,1" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="CornerRadius" Value="0" />
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="Foreground" Value="#9aa0a6" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Left" />
+    </Style>
     <Style Selector="TreeViewItem">
       <Setter Property="MinHeight" Value="22" />
       <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
@@ -247,7 +257,7 @@
       <GridSplitter Grid.Column="3" ResizeDirection="Columns" />
 
       <!-- Right: commit details + files -->
-      <Grid Grid.Column="4" RowDefinitions="Auto,Auto,4,Auto,*">
+      <Grid Grid.Column="4" RowDefinitions="Auto,Auto,4,Auto,Auto,*">
         <Border Classes="header"><TextBlock Classes="header" Text="Commit" /></Border>
         <ScrollViewer Grid.Row="1" MaxHeight="260">
           <DockPanel Margin="8,6">
@@ -262,7 +272,12 @@
         </ScrollViewer>
         <GridSplitter Grid.Row="2" ResizeDirection="Rows" />
         <Border Grid.Row="3" Classes="header"><TextBlock Classes="header" Text="Files" /></Border>
-        <ListBox x:Name="FilesList" Grid.Row="4" Classes="dense" SelectionMode="Multiple" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+        <Grid Grid.Row="4" ColumnDefinitions="18,2*,84,3*" Margin="4,0" Background="#232427">
+          <Button x:Name="SortByName" Grid.Column="1" Classes="colhead" Tag="Name" Click="OnSortFiles" ToolTip.Tip="Sort by file name" />
+          <TextBlock Grid.Column="2" Text="State" FontSize="11" Foreground="#9aa0a6" VerticalAlignment="Center" Margin="2,0" />
+          <Button x:Name="SortByPath" Grid.Column="3" Classes="colhead" Tag="Path" Click="OnSortFiles" ToolTip.Tip="Sort by full path" />
+        </Grid>
+        <ListBox x:Name="FilesList" Grid.Row="5" Classes="dense" SelectionMode="Multiple" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
           <ListBox.ItemTemplate>
             <DataTemplate>
               <Grid ColumnDefinitions="18,2*,84,3*" Height="20" ToolTip.Tip="{Binding RelPath}">

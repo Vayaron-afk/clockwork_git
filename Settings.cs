@@ -11,6 +11,9 @@ public sealed class Settings
     public string? LastRepository { get; set; }
     /// <summary>Per repository: refs whose history is shown in the graph.</summary>
     public Dictionary<string, List<string>> ShownRefs { get; set; } = new();
+    /// <summary>Files panel sort column: "Name" or "Path".</summary>
+    public string FilesSort { get; set; } = "Path";
+    public bool FilesSortDescending { get; set; }
 
     public static Settings Load()
     {

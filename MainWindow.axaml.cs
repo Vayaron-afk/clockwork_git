@@ -28,7 +28,7 @@ public partial class MainWindow : Window
     List<string> _remotes = new();
     string? _currentBranch, _headHash, _pendingFile, _undoneMessage;
     CommitInfo? _filesOwner;
-    bool _busy;
+    bool _busy, _resortingFiles;
     int _refreshGen, _logGen, _detailsGen, _diffGen;
     DateTime _lastRefresh;
 
@@ -46,6 +46,8 @@ public partial class MainWindow : Window
             _settings.LastRepository = full;
         }
 
+        UpdateSortHeaders();
+
         var checker = ImageTools.CheckerBrush();
         ImgOldHost.Background = checker;
         ImgNewHost.Background = checker;
@@ -57,7 +59,9 @@ public partial class MainWindow : Window
         };
         GraphList.SelectionChanged += (_, _) => LoadDetails();
         FilesList.SelectionChanged += (_, _) =>
-            ShowDiff(FilesList.SelectedItems?.Count == 1 ? FilesList.SelectedItem as FileChange : null);
+        {
+            if (!_resortingFiles) ShowDiff(FilesList.SelectedItems?.Count == 1 ? FilesList.SelectedItem as FileChange : null);
+        };
         FilterBox.TextChanged += (_, _) => ApplyFilter((GraphList.SelectedItem as CommitInfo)?.Hash);
 
         GraphList.ContextRequested += OnGraphContext;
@@ -550,11 +554,60 @@ public partial class MainWindow : Window
         }
 
         _filesOwner = c;
-        FilesList.ItemsSource = files;
-        var pick = files.FirstOrDefault(f => f.RelPath == _pendingFile) ?? files.FirstOrDefault();
+        var sorted = SortFiles(files);
+        FilesList.ItemsSource = sorted;
+        var pick = sorted.FirstOrDefault(f => f.RelPath == _pendingFile) ?? sorted.FirstOrDefault();
         _pendingFile = null;
         FilesList.SelectedItem = pick;
         if (pick == null) ShowDiff(null);
+    }
+
+    // ───────────────────────── files sorting ─────────────────────────
+
+    List<FileChange> SortFiles(IEnumerable<FileChange> files)
+    {
+        var byName = _settings.FilesSort == "Name";
+        Func<FileChange, string> primary = byName ? f => f.Name : f => f.RelPath;
+        var cmp = StringComparer.CurrentCultureIgnoreCase;
+        var ordered = _settings.FilesSortDescending
+            ? files.OrderByDescending(primary, cmp)
+            : files.OrderBy(primary, cmp);
+        return ordered.ThenBy(f => f.RelPath, cmp).ToList();
+    }
+
+    void UpdateSortHeaders()
+    {
+        var arrow = _settings.FilesSortDescending ? " ▼" : " ▲";
+        SortByName.Content = "Name" + (_settings.FilesSort == "Name" ? arrow : "");
+        SortByPath.Content = "Path" + (_settings.FilesSort == "Path" ? arrow : "");
+    }
+
+    void OnSortFiles(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string column }) return;
+        if (_settings.FilesSort == column) _settings.FilesSortDescending = !_settings.FilesSortDescending;
+        else
+        {
+            _settings.FilesSort = column;
+            _settings.FilesSortDescending = false;
+        }
+        _settings.Save();
+        UpdateSortHeaders();
+
+        if (FilesList.ItemsSource is not IEnumerable<FileChange> current) return;
+        var selected = FilesList.SelectedItems?.OfType<FileChange>().ToList() ?? new();
+        // Same files stay selected, so the diff panel must not be reloaded or cleared.
+        _resortingFiles = true;
+        try
+        {
+            FilesList.ItemsSource = SortFiles(current);
+            foreach (var f in selected) FilesList.SelectedItems?.Add(f);
+        }
+        finally
+        {
+            _resortingFiles = false;
+        }
+        if (selected.Count > 0) FilesList.ScrollIntoView(selected[0]);
     }
 
     // ───────────────────────── diff ─────────────────────────
