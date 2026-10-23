@@ -23,6 +23,7 @@ public static class GitRunner
             CreateNoWindow = true,
             StandardOutputEncoding = Encoding.UTF8,
             StandardErrorEncoding = Encoding.UTF8,
+            StandardInputEncoding = new UTF8Encoding(false),
         };
         foreach (var opt in new[] { "core.quotepath=off", "i18n.logOutputEncoding=UTF-8", "color.ui=never" })
         {
@@ -37,14 +38,17 @@ public static class GitRunner
         return psi;
     }
 
-    public static async Task<GitResult> RunAsync(string repo, params string[] args)
+    public static Task<GitResult> RunAsync(string repo, params string[] args) => RunWithInputAsync(repo, null, args);
+
+    public static async Task<GitResult> RunWithInputAsync(string repo, string? input, params string[] args)
     {
         try
         {
             using var p = Process.Start(CreateStartInfo(repo, args))!;
-            p.StandardInput.Close();
             var output = p.StandardOutput.ReadToEndAsync();
             var error = p.StandardError.ReadToEndAsync();
+            if (input != null) await p.StandardInput.WriteAsync(input);
+            p.StandardInput.Close();
             await p.WaitForExitAsync();
             return new GitResult(p.ExitCode, await output, await error);
         }

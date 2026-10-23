@@ -147,7 +147,11 @@ public sealed record StashInfo(string Ref, string Message);
 
 public enum RepoState { Clean, Merging, CherryPicking, Reverting, Rebasing }
 
-public sealed class FileChange
+public sealed record LfsFile(string Path, long Size, bool Downloaded, string Oid);
+
+public sealed record LfsRule(string Pattern, int Line);
+
+public sealed class FileChange : Observable
 {
     static readonly IBrush Modified = new ImmutableSolidColorBrush(Color.Parse("#6aa6ff"));
     static readonly IBrush Added = new ImmutableSolidColorBrush(Color.Parse("#5fbf5f"));
@@ -162,6 +166,10 @@ public sealed class FileChange
     public char WorkStatus { get; init; } = ' ';
     public bool IsWorkingTree { get; init; }
     public bool IsConflict { get; init; }
+
+    bool _isLfs;
+    /// <summary>The path falls under a filter=lfs rule (at the commit, or in the working tree).</summary>
+    public bool IsLfs { get => _isLfs; set => Set(ref _isLfs, value); }
 
     public string Name => RelPath[(RelPath.LastIndexOf('/') + 1)..];
     public string Folder => RelPath.LastIndexOf('/') is var i and >= 0 ? RelPath[..i] : "";

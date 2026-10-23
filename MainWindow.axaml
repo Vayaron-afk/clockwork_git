@@ -92,6 +92,7 @@
         <MenuItem Header="_Add Repository…" Click="OnAddRepo" />
         <MenuItem Header="_Refresh" InputGesture="F5" Click="OnRefresh" />
         <MenuItem Header="Open in _Explorer" Click="OnOpenExplorer" />
+        <MenuItem Header="Git _LFS…" Click="OnOpenLfs" />
         <Separator />
         <MenuItem Header="E_xit" Click="OnExit" />
       </MenuItem>
@@ -158,6 +159,9 @@
         </StackPanel>
 
         <StackPanel Grid.Column="4" Orientation="Horizontal">
+          <Button Classes="tool" Click="OnOpenLfs" ToolTip.Tip="Git LFS: files, rules, maintenance">
+            <StackPanel><TextBlock Classes="glyph" Text="&#xE7B8;" Foreground="#a990ff" /><TextBlock Classes="label" Text="LFS" /></StackPanel>
+          </Button>
           <Button Classes="tool" Click="OnAddRepo">
             <StackPanel><TextBlock Classes="glyph" Text="&#xE8F4;" /><TextBlock Classes="label" Text="Add Repo" /></StackPanel>
           </Button>
@@ -271,7 +275,12 @@
           </DockPanel>
         </ScrollViewer>
         <GridSplitter Grid.Row="2" ResizeDirection="Rows" />
-        <Border Grid.Row="3" Classes="header"><TextBlock Classes="header" Text="Files" /></Border>
+        <Border Grid.Row="3" Classes="header">
+          <DockPanel>
+            <CheckBox x:Name="LfsOnly" DockPanel.Dock="Right" Classes="small" Content="LFS only" FontSize="11" ToolTip.Tip="Show only files stored in Git LFS" />
+            <TextBlock Classes="header" Text="Files" />
+          </DockPanel>
+        </Border>
         <Grid Grid.Row="4" ColumnDefinitions="18,2*,84,3*" Margin="4,0" Background="#232427">
           <Button x:Name="SortByName" Grid.Column="1" Classes="colhead" Tag="Name" Click="OnSortFiles" ToolTip.Tip="Sort by file name" />
           <TextBlock Grid.Column="2" Text="State" FontSize="11" Foreground="#9aa0a6" VerticalAlignment="Center" Margin="2,0" />
@@ -282,7 +291,12 @@
             <DataTemplate>
               <Grid ColumnDefinitions="18,2*,84,3*" Height="20" ToolTip.Tip="{Binding RelPath}">
                 <TextBlock Text="{Binding StatusLetter}" Foreground="{Binding StatusBrush}" FontWeight="Bold" VerticalAlignment="Center" />
-                <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                <DockPanel Grid.Column="1">
+                  <Border DockPanel.Dock="Right" IsVisible="{Binding IsLfs}" Background="#5b4a9a" CornerRadius="2" Padding="3,0" Margin="4,0,4,0" VerticalAlignment="Center" ToolTip.Tip="Stored in Git LFS">
+                    <TextBlock Text="LFS" FontSize="9" Foreground="White" />
+                  </Border>
+                  <TextBlock Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                </DockPanel>
                 <TextBlock Grid.Column="2" Text="{Binding State}" Foreground="#9aa0a6" VerticalAlignment="Center" />
                 <TextBlock Grid.Column="3" Text="{Binding Folder}" Foreground="#7d838a" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
               </Grid>

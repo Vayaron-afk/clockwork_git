@@ -73,6 +73,23 @@ public static class Dialogs
         return await w.ShowDialog<bool?>(owner) == true;
     }
 
+    /// <summary>Returns the index of the pressed button; the last button and closing the window mean cancel (-1).</summary>
+    public static async Task<int> Choose(Window owner, string title, string text, params string[] buttons)
+    {
+        var btns = buttons.Select((b, i) => Btn(b, isDefault: i == 0, isCancel: i == buttons.Length - 1)).ToArray();
+        var panel = new StackPanel
+        {
+            Children = { new TextBlock { Text = text, TextWrapping = TextWrapping.Wrap }, ButtonRow(btns) },
+        };
+        var w = MakeWindow(title, panel, 560);
+        for (var i = 0; i < btns.Length; i++)
+        {
+            var index = i == btns.Length - 1 ? -1 : i;
+            btns[i].Click += (_, _) => w.Close(index);
+        }
+        return await w.ShowDialog<int?>(owner) ?? -1;
+    }
+
     public static async Task<string?> Prompt(Window owner, string title, string label, string initial = "")
     {
         var box = new TextBox { Text = initial };

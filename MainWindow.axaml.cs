@@ -28,6 +28,7 @@ public partial class MainWindow : Window
     List<string> _remotes = new();
     string? _currentBranch, _headHash, _pendingFile, _undoneMessage;
     CommitInfo? _filesOwner;
+    List<FileChange> _ownerFiles = new();
     bool _busy, _resortingFiles;
     int _refreshGen, _logGen, _detailsGen, _diffGen;
     DateTime _lastRefresh;
@@ -47,6 +48,7 @@ public partial class MainWindow : Window
         }
 
         UpdateSortHeaders();
+        LfsOnly.IsCheckedChanged += (_, _) => RebindFiles();
 
         var checker = ImageTools.CheckerBrush();
         ImgOldHost.Background = checker;
@@ -511,6 +513,7 @@ public partial class MainWindow : Window
         if (selected.Count != 1 || repo == null)
         {
             _filesOwner = null;
+            _ownerFiles = new();
             FilesList.ItemsSource = null;
             DetailAvatar.IsVisible = false;
             DetailHeader.Text = selected.Count > 1 ? $"{selected.Count} commits selected" : "";
@@ -553,10 +556,15 @@ public partial class MainWindow : Window
             DetailMessage.Text = tMessage.Result;
         }
 
+        var lfs = await repo.LfsAttributed(files.Select(f => f.RelPath).ToList(), c.IsWorkingTree ? null : c.Hash);
+        if (gen != _detailsGen) return;
+        foreach (var f in files) f.IsLfs = lfs.Contains(f.RelPath);
+
         _filesOwner = c;
-        var sorted = SortFiles(files);
-        FilesList.ItemsSource = sorted;
-        var pick = sorted.FirstOrDefault(f => f.RelPath == _pendingFile) ?? sorted.FirstOrDefault();
+        _ownerFiles = files;
+        var shown = ShownFiles();
+        FilesList.ItemsSource = shown;
+        var pick = shown.FirstOrDefault(f => f.RelPath == _pendingFile) ?? shown.FirstOrDefault();
         _pendingFile = null;
         FilesList.SelectedItem = pick;
         if (pick == null) ShowDiff(null);
@@ -593,21 +601,33 @@ public partial class MainWindow : Window
         }
         _settings.Save();
         UpdateSortHeaders();
+        RebindFiles();
+    }
 
-        if (FilesList.ItemsSource is not IEnumerable<FileChange> current) return;
+    List<FileChange> ShownFiles() =>
+        SortFiles(LfsOnly.IsChecked == true ? _ownerFiles.Where(f => f.IsLfs) : _ownerFiles);
+
+    /// <summary>Re-applies sort and filter, keeping the selection (and its diff) when it is still visible.</summary>
+    void RebindFiles()
+    {
+        if (FilesList.ItemsSource == null) return;
         var selected = FilesList.SelectedItems?.OfType<FileChange>().ToList() ?? new();
-        // Same files stay selected, so the diff panel must not be reloaded or cleared.
+        var shown = ShownFiles();
+        var kept = selected.Where(shown.Contains).ToList();
         _resortingFiles = true;
         try
         {
-            FilesList.ItemsSource = SortFiles(current);
-            foreach (var f in selected) FilesList.SelectedItems?.Add(f);
+            FilesList.ItemsSource = shown;
+            foreach (var f in kept) FilesList.SelectedItems?.Add(f);
         }
         finally
         {
             _resortingFiles = false;
         }
-        if (selected.Count > 0) FilesList.ScrollIntoView(selected[0]);
+        if (kept.Count > 0) FilesList.ScrollIntoView(kept[0]);
+        else if (selected.Count > 0 && shown.Count > 0) FilesList.SelectedItem = shown[0]; // selection got filtered out
+        else if (selected.Count > 0) ShowDiff(null);
+        if (kept.Count > 0 && kept.Count != selected.Count) ShowDiff(kept.Count == 1 ? kept[0] : null);
     }
 
     // ───────────────────────── diff ─────────────────────────
@@ -1119,11 +1139,50 @@ public partial class MainWindow : Window
             menu.Items.Add(new Separator());
         }
         var first = files[0];
+        if (files.Count == 1)
+        {
+            menu.Items.Add(LfsMenu(first));
+            menu.Items.Add(new Separator());
+        }
         menu.Items.Add(Item("Open", () => { OpenFile(_repo.FullPath(first.RelPath)); return Task.CompletedTask; }));
         menu.Items.Add(Item("Show in Explorer", () => { ShowInExplorer(_repo.FullPath(first.RelPath)); return Task.CompletedTask; }));
         menu.Items.Add(Item("Copy path", () => CopyText(string.Join("\n", files.Select(f => f.RelPath)))));
         menu.Open(FilesList);
         e.Handled = true;
+    }
+
+    // ───────────────────────── LFS ─────────────────────────
+
+    MenuItem LfsMenu(FileChange f)
+    {
+        var repo = _repo!;
+        var lfs = new MenuItem { Header = "LFS" };
+        if (!f.IsLfs)
+        {
+            var ext = LfsActions.ExtensionPattern(f.RelPath);
+            if (ext.Length > 0)
+                lfs.Items.Add(Item($"Track '{ext}' in LFS…", () => Do(() => LfsActions.Track(this, repo, ext, literal: false))));
+            lfs.Items.Add(Item("Track this file in LFS…", () => Do(() => LfsActions.Track(this, repo, f.RelPath, literal: true))));
+        }
+        else
+        {
+            var rules = repo.LfsRules().Where(r => GitRepo.AttrPatternMatches(r.Pattern, f.RelPath)).ToList();
+            foreach (var rule in rules)
+                lfs.Items.Add(Item($"Untrack '{rule.Pattern}'…", () => Do(() => LfsActions.Untrack(this, repo, rule.Pattern))));
+            if (rules.Count == 0)
+                lfs.Items.Add(new MenuItem { Header = "Rule is not in the root .gitattributes", IsEnabled = false });
+        }
+        lfs.Items.Add(new Separator());
+        lfs.Items.Add(Item("Open LFS window…", () => { OpenLfs(); return Task.CompletedTask; }));
+        return lfs;
+    }
+
+    void OnOpenLfs(object? sender, RoutedEventArgs e) => OpenLfs();
+
+    void OpenLfs()
+    {
+        if (_repo == null) return;
+        new LfsWindow(_repo, RefreshAll).Show(this);
     }
 
     // ───────────────────────── helpers ─────────────────────────
