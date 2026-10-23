@@ -3,11 +3,6 @@ using System.Text;
 
 namespace ClockworkGit.Git;
 
-public sealed record GitResult(int ExitCode, string Output, string Error)
-{
-    public bool Ok => ExitCode == 0;
-}
-
 /// <summary>Runs the git CLI. Never prompts: no terminal prompts, no editors.</summary>
 public static class GitRunner
 {

@@ -1,0 +1,112 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="ClockworkGit.Views.LfsWindow"
+        Title="Git LFS" Width="1040" Height="700"
+        WindowStartupLocation="CenterOwner"
+        Background="#1e1f22" FontSize="12">
+
+  <Window.Styles>
+    <Style Selector="TextBlock.section">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="FontSize" Value="13" />
+    </Style>
+    <Style Selector="TextBlock.hint">
+      <Setter Property="Foreground" Value="#9aa0a6" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style Selector="TextBlock.colhead">
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="Foreground" Value="#9aa0a6" />
+    </Style>
+  </Window.Styles>
+
+  <TabControl Margin="4">
+    <TabItem Header="Files">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="10" Margin="4,6">
+          <TextBox x:Name="FilesFilter" Width="340" Watermark="Filter by path" />
+          <CheckBox x:Name="OnlyMissing" Content="Only not downloaded" />
+          <Button Content="Reload" Click="OnReloadFiles" />
+          <TextBlock x:Name="FilesSummary" VerticalAlignment="Center" Foreground="#9aa0a6" />
+        </StackPanel>
+        <TextBlock DockPanel.Dock="Top" Classes="hint" Margin="6,0,6,4"
+                   Text="git lfs ls-files for HEAD. ● the object is in the local cache, ○ only the pointer is here (git lfs pull downloads it)." />
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="22,*,90,100" Margin="6,2" Background="#232427">
+          <TextBlock Grid.Column="1" Classes="colhead" Text="Path" />
+          <TextBlock Grid.Column="2" Classes="colhead" Text="Size" HorizontalAlignment="Right" Margin="0,0,10,0" />
+          <TextBlock Grid.Column="3" Classes="colhead" Text="OID" />
+        </Grid>
+        <ListBox x:Name="LfsFilesList" Classes="dense" SelectionMode="Multiple" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <Grid ColumnDefinitions="22,*,90,100" Height="20" ToolTip.Tip="{Binding Path}">
+                <TextBlock Text="{Binding Marker}" Foreground="{Binding MarkerBrush}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="{Binding Path}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="2" Text="{Binding SizeText}" Foreground="#c8c8c8" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0" />
+                <TextBlock Grid.Column="3" Text="{Binding ShortOid}" Foreground="#7d838a" FontFamily="Cascadia Mono,Consolas,monospace" VerticalAlignment="Center" />
+              </Grid>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </DockPanel>
+    </TabItem>
+
+    <TabItem Header="Rules">
+      <DockPanel Margin="6">
+        <TextBlock DockPanel.Dock="Top" Classes="hint" Margin="0,0,0,6"
+                   Text="filter=lfs rules from .gitattributes in the repository root. A new rule applies to files when they are added or changed; existing files can be converted right away." />
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+          <TextBox x:Name="NewRule" Width="280" Watermark="*.ext, folder/**, or path/to/file" />
+          <Button Content="Add rule…" Click="OnAddRule" />
+          <Button Content="Remove selected rule…" Click="OnRemoveRule" />
+        </StackPanel>
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,120,140" Margin="6,2" Background="#232427">
+          <TextBlock Classes="colhead" Text="Pattern" />
+          <TextBlock Grid.Column="1" Classes="colhead" Text=".gitattributes line" />
+          <TextBlock Grid.Column="2" Classes="colhead" Text="Files in LFS (HEAD)" />
+        </Grid>
+        <ListBox x:Name="RulesList" Classes="dense">
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <Grid ColumnDefinitions="*,120,140" Height="22">
+                <TextBlock Text="{Binding Pattern}" FontFamily="Cascadia Mono,Consolas,monospace" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="{Binding Line}" Foreground="#9aa0a6" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="2" Text="{Binding FilesText}" Foreground="#9aa0a6" VerticalAlignment="Center" />
+              </Grid>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </DockPanel>
+    </TabItem>
+
+    <TabItem Header="Maintenance">
+      <ScrollViewer>
+        <StackPanel Margin="10" Spacing="22" MaxWidth="820" HorizontalAlignment="Left">
+          <StackPanel Spacing="6">
+            <TextBlock Classes="section" Text="Local LFS cache" />
+            <TextBlock x:Name="CacheText" Classes="hint" Text="…" />
+            <Button Content="Recalculate" Click="OnRecalcCache" />
+          </StackPanel>
+
+          <StackPanel Spacing="6">
+            <TextBlock Classes="section" Text="Files that match LFS rules but are stored as regular git objects" />
+            <TextBlock Classes="hint" Text="Converting stages their current versions as LFS pointers; commit them afterwards as usual. History is not rewritten, so the repository does not get smaller, but new clones and checkouts get lighter." />
+            <TextBlock x:Name="MigrateText" Classes="hint" Text="Not analyzed yet." />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Button x:Name="AnalyzeButton" Content="Analyze" Click="OnAnalyze" />
+              <Button x:Name="ConvertButton" Content="Convert to LFS (stage)…" Click="OnConvert" IsEnabled="False" />
+            </StackPanel>
+          </StackPanel>
+
+          <StackPanel Spacing="6">
+            <TextBlock Classes="section" Text="Download" />
+            <TextBlock Classes="hint" Text="git lfs fetch --all downloads every LFS version from all refs, so diffs of old commits open without waiting for the network. Uses disk space." />
+            <Button x:Name="FetchAllButton" Content="Fetch all LFS objects" Click="OnFetchAll" />
+          </StackPanel>
+
+          <TextBlock x:Name="MaintStatus" Classes="hint" />
+        </StackPanel>
+      </ScrollViewer>
+    </TabItem>
+  </TabControl>
+</Window>
