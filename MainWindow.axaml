@@ -45,9 +45,6 @@
       <Setter Property="MinHeight" Value="0" />
       <Setter Property="HorizontalContentAlignment" Value="Stretch" />
     </Style>
-    <Style Selector="ListBox.diff ListBoxItem">
-      <Setter Property="Padding" Value="0" />
-    </Style>
     <Style Selector="Button.colhead">
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="Padding" Value="2,1" />
@@ -70,19 +67,6 @@
     </Style>
     <Style Selector="GridSplitter">
       <Setter Property="Background" Value="#141517" />
-    </Style>
-    <Style Selector="TextBlock.mono">
-      <Setter Property="FontFamily" Value="Cascadia Mono,Consolas,monospace" />
-      <Setter Property="FontSize" Value="12" />
-      <Setter Property="VerticalAlignment" Value="Center" />
-    </Style>
-    <Style Selector="TextBlock.lineNo">
-      <Setter Property="FontFamily" Value="Cascadia Mono,Consolas,monospace" />
-      <Setter Property="FontSize" Value="11" />
-      <Setter Property="Foreground" Value="#6f737a" />
-      <Setter Property="HorizontalAlignment" Value="Right" />
-      <Setter Property="VerticalAlignment" Value="Center" />
-      <Setter Property="Margin" Value="0,0,6,0" />
     </Style>
   </Window.Styles>
 
@@ -310,54 +294,18 @@
       <!-- Bottom: diff -->
       <DockPanel Grid.Row="2" Grid.Column="2" Grid.ColumnSpan="3">
         <Border DockPanel.Dock="Top" Classes="header">
-          <TextBlock x:Name="DiffTitle" Classes="header" Text="Changes" />
+          <DockPanel>
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="10">
+              <CheckBox x:Name="SvgAsText" Classes="small" Content="As text" FontSize="11" IsVisible="False" ToolTip.Tip="Show SVG source diff instead of the picture" />
+              <Button x:Name="OpenCompareButton" Content="Open in compare window" FontSize="11" Padding="6,0" MinHeight="0" IsEnabled="False" Click="OnOpenCompare" ToolTip.Tip="Double-click a file does the same" />
+            </StackPanel>
+            <TextBlock x:Name="DiffTitle" Classes="header" Text="Changes" TextTrimming="CharacterEllipsis" />
+          </DockPanel>
         </Border>
         <Panel>
-          <ListBox x:Name="DiffList" Classes="dense diff" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-            <ListBox.ItemTemplate>
-              <DataTemplate>
-                <Grid ColumnDefinitions="46,*,2,46,*" Height="17">
-                  <TextBlock Classes="lineNo" Text="{Binding LeftNo}" />
-                  <Border Grid.Column="1" Background="{Binding LeftBg}" ClipToBounds="True">
-                    <TextBlock Classes="mono" Text="{Binding LeftText}" Margin="4,0" />
-                  </Border>
-                  <Border Grid.Column="2" Background="#3c3f41" />
-                  <TextBlock Grid.Column="3" Classes="lineNo" Text="{Binding RightNo}" />
-                  <Border Grid.Column="4" Background="{Binding RightBg}" ClipToBounds="True">
-                    <TextBlock Classes="mono" Text="{Binding RightText}" Margin="4,0" />
-                  </Border>
-                </Grid>
-              </DataTemplate>
-            </ListBox.ItemTemplate>
-          </ListBox>
-
-          <DockPanel x:Name="ImagePanel" IsVisible="False">
-            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="10" Margin="6,4">
-              <RadioButton x:Name="ImgSideBySide" GroupName="imgmode" Content="Side by side" IsChecked="True" />
-              <RadioButton x:Name="ImgOnion" GroupName="imgmode" Content="Onion skin" />
-              <RadioButton x:Name="ImgDiffMode" GroupName="imgmode" Content="Difference" />
-              <Slider x:Name="OnionSlider" Width="160" Minimum="0" Maximum="1" Value="0.5" IsVisible="False" VerticalAlignment="Center" />
-              <CheckBox x:Name="ImgActualSize" Content="1:1" />
-              <TextBlock x:Name="ImgInfo" Foreground="#9aa0a6" VerticalAlignment="Center" />
-            </StackPanel>
-            <Panel>
-              <Grid x:Name="ImgSideGrid" ColumnDefinitions="*,6,*" RowDefinitions="Auto,*">
-                <TextBlock Text="Old" Foreground="#e06060" Margin="4,0,0,2" />
-                <TextBlock Grid.Column="2" Text="New" Foreground="#5fbf5f" Margin="4,0,0,2" />
-                <Border x:Name="ImgOldHost" Grid.Row="1" ClipToBounds="True"><Image x:Name="ImgOld" /></Border>
-                <Border x:Name="ImgNewHost" Grid.Row="1" Grid.Column="2" ClipToBounds="True"><Image x:Name="ImgNew" /></Border>
-              </Grid>
-              <Border x:Name="ImgOverlayHost" IsVisible="False" ClipToBounds="True">
-                <Panel>
-                  <Image x:Name="ImgOnionOld" />
-                  <Image x:Name="ImgOnionNew" Opacity="{Binding #OnionSlider.Value}" />
-                </Panel>
-              </Border>
-              <Border x:Name="ImgDiffHost" IsVisible="False" Background="#111" ClipToBounds="True">
-                <Image x:Name="ImgDiffImage" />
-              </Border>
-            </Panel>
-          </DockPanel>
+          <ListBox x:Name="DiffList" Classes="dense diff" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                   ItemTemplate="{StaticResource DiffRowTemplate}" />
+          <ui:ImageCompareView x:Name="ImageView" IsVisible="False" />
         </Panel>
       </DockPanel>
     </Grid>

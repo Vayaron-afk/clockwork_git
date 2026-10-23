@@ -50,10 +50,12 @@ public partial class MainWindow : Window
         UpdateSortHeaders();
         LfsOnly.IsCheckedChanged += (_, _) => RebindFiles();
 
-        var checker = ImageTools.CheckerBrush();
-        ImgOldHost.Background = checker;
-        ImgNewHost.Background = checker;
-        ImgOverlayHost.Background = checker;
+        SvgAsText.IsCheckedChanged += (_, _) =>
+            ShowDiff(FilesList.SelectedItems?.Count == 1 ? FilesList.SelectedItem as FileChange : null);
+        FilesList.DoubleTapped += (_, e) =>
+        {
+            if ((e.Source as Control)?.DataContext is FileChange f) OpenCompare(f);
+        };
 
         ReposList.SelectionChanged += async (_, _) =>
         {
@@ -71,11 +73,6 @@ public partial class MainWindow : Window
         BranchTree.DoubleTapped += OnBranchDoubleTapped;
         FilesList.ContextRequested += OnFilesContext;
         ReposList.ContextRequested += OnRepoContext;
-
-        ImgSideBySide.IsCheckedChanged += (_, _) => UpdateImageMode();
-        ImgOnion.IsCheckedChanged += (_, _) => UpdateImageMode();
-        ImgDiffMode.IsCheckedChanged += (_, _) => UpdateImageMode();
-        ImgActualSize.IsCheckedChanged += (_, _) => UpdateImageMode();
 
         AddHandler(KeyDownEvent, OnKey, RoutingStrategies.Tunnel);
 
@@ -637,132 +634,43 @@ public partial class MainWindow : Window
         var gen = ++_diffGen;
         var repo = _repo;
         var owner = _filesOwner;
+        OpenCompareButton.IsEnabled = f != null && owner != null;
+        SvgAsText.IsVisible = f != null && ImageTools.IsTextImage(f.RelPath);
         if (f == null || repo == null || owner == null)
         {
             DiffTitle.Text = "Changes";
             DiffList.ItemsSource = null;
             DiffList.IsVisible = true;
-            ImagePanel.IsVisible = false;
+            ImageView.IsVisible = false;
+            ImageView.Clear();
             return;
         }
 
         DiffTitle.Text = $"Changes of {f.RelPath} ({f.StatusText})";
-        if (ImageTools.IsImage(f.RelPath))
+        if (ImageTools.IsImage(f.RelPath) && !(SvgAsText.IsVisible && SvgAsText.IsChecked == true))
         {
-            await ShowImageDiff(repo, owner, f, gen);
+            DiffList.IsVisible = false;
+            ImageView.IsVisible = true;
+            var (oldBytes, newBytes) = await repo.LoadVersions(owner, f, _headHash != null);
+            if (gen != _diffGen) return;
+            await ImageView.ShowAsync(oldBytes, newBytes, f.RelPath);
             return;
         }
 
         DiffList.IsVisible = true;
-        ImagePanel.IsVisible = false;
-        List<DiffRow> rows;
-        if (owner.IsWorkingTree && (f.IsUntracked || (_headHash == null && f.IndexStatus == 'A')))
-        {
-            rows = await Task.Run(() => ReadAsAdded(repo.FullPath(f.RelPath)));
-        }
-        else
-        {
-            var diff = owner.IsWorkingTree ? await repo.WorkingDiff(f) : await repo.CommitDiff(owner, f);
-            rows = await Task.Run(() => DiffParser.SideBySide(diff));
-        }
+        ImageView.IsVisible = false;
+        var rows = await repo.DiffRows(owner, f, _headHash != null);
         if (gen != _diffGen) return;
         DiffList.ItemsSource = rows;
     }
 
-    static List<DiffRow> ReadAsAdded(string path)
+    void OnOpenCompare(object? sender, RoutedEventArgs e) =>
+        OpenCompare(FilesList.SelectedItems?.Count == 1 ? FilesList.SelectedItem as FileChange : null);
+
+    void OpenCompare(FileChange? f)
     {
-        if (Directory.Exists(path)) return [DiffRow.Message("Directory")];
-        if (!File.Exists(path)) return [DiffRow.Message("File not found")];
-        var info = new FileInfo(path);
-        if (info.Length > 4 * 1024 * 1024) return [DiffRow.Message($"File too large to show ({info.Length / 1024} KB)")];
-        var bytes = File.ReadAllBytes(path);
-        if (bytes.AsSpan(0, Math.Min(bytes.Length, 8000)).Contains((byte)0)) return [DiffRow.Message("Binary file")];
-        return DiffParser.AllAdded(System.Text.Encoding.UTF8.GetString(bytes));
-    }
-
-    async Task ShowImageDiff(GitRepo repo, CommitInfo owner, FileChange f, int gen)
-    {
-        DiffList.IsVisible = false;
-        ImagePanel.IsVisible = true;
-        ImgInfo.Text = "Loading…";
-        SetImages(null, null, null);
-
-        byte[]? oldBytes = null, newBytes = null;
-        if (owner.IsWorkingTree)
-        {
-            if (!f.IsUntracked && f.IndexStatus != 'A' && _headHash != null)
-                oldBytes = await repo.Blob("HEAD", f.OldPath ?? f.RelPath);
-            var full = repo.FullPath(f.RelPath);
-            if (File.Exists(full)) newBytes = await File.ReadAllBytesAsync(full);
-        }
-        else
-        {
-            if (f.Status != 'A' && owner.Parents.Length > 0)
-                oldBytes = await repo.Blob(owner.Parents[0], f.OldPath ?? f.RelPath);
-            if (f.Status != 'D')
-                newBytes = await repo.Blob(owner.Hash, f.RelPath);
-        }
-
-        var path = f.RelPath;
-        var (oldSk, newSk, diffSk, changed) = await Task.Run(() =>
-        {
-            var o = ImageTools.Decode(oldBytes, path);
-            var n = ImageTools.Decode(newBytes, path);
-            SKBitmap? d = null;
-            double pct = -1;
-            if (o != null && n != null) (d, pct) = ImageTools.Diff(o, n);
-            return (o, n, d, pct);
-        });
-
-        if (gen != _diffGen)
-        {
-            oldSk?.Dispose(); newSk?.Dispose(); diffSk?.Dispose();
-            return;
-        }
-
-        SetImages(
-            oldSk == null ? null : ImageTools.ToAvalonia(oldSk),
-            newSk == null ? null : ImageTools.ToAvalonia(newSk),
-            diffSk == null ? null : ImageTools.ToAvalonia(diffSk));
-
-        static string Describe(SKBitmap? b, byte[]? bytes) =>
-            bytes == null ? "—" : b == null ? $"unsupported format, {bytes.Length / 1024.0:0.#} KB" : $"{b.Width}×{b.Height}, {bytes.Length / 1024.0:0.#} KB";
-
-        var info = $"Old: {Describe(oldSk, oldBytes)}   New: {Describe(newSk, newBytes)}";
-        if (changed >= 0) info += changed == 0 ? "   · pixels identical" : $"   · changed {changed:0.###}% of pixels";
-        if (oldSk != null && newSk != null && (oldSk.Width != newSk.Width || oldSk.Height != newSk.Height)) info += "   · size differs";
-        ImgInfo.Text = info;
-
-        var small = Math.Max(oldSk?.Width ?? 0, newSk?.Width ?? 0) <= 256;
-        foreach (var img in new[] { ImgOld, ImgNew, ImgOnionOld, ImgOnionNew, ImgDiffImage })
-            RenderOptions.SetBitmapInterpolationMode(img, small ? BitmapInterpolationMode.None : BitmapInterpolationMode.HighQuality);
-
-        oldSk?.Dispose(); newSk?.Dispose(); diffSk?.Dispose();
-        UpdateImageMode();
-    }
-
-    void SetImages(Bitmap? oldImage, Bitmap? newImage, Bitmap? diffImage)
-    {
-        var previous = new[] { ImgOld.Source, ImgNew.Source, ImgDiffImage.Source };
-        ImgOld.Source = oldImage;
-        ImgOnionOld.Source = oldImage;
-        ImgNew.Source = newImage;
-        ImgOnionNew.Source = newImage;
-        ImgDiffImage.Source = diffImage;
-        foreach (var p in previous) (p as IDisposable)?.Dispose();
-    }
-
-    void UpdateImageMode()
-    {
-        var side = ImgSideBySide.IsChecked == true;
-        var onion = ImgOnion.IsChecked == true;
-        var diff = ImgDiffMode.IsChecked == true;
-        ImgSideGrid.IsVisible = side;
-        ImgOverlayHost.IsVisible = onion;
-        ImgDiffHost.IsVisible = diff;
-        OnionSlider.IsVisible = onion;
-        var stretch = ImgActualSize.IsChecked == true ? Stretch.None : Stretch.Uniform;
-        foreach (var img in new[] { ImgOld, ImgNew, ImgOnionOld, ImgOnionNew, ImgDiffImage }) img.Stretch = stretch;
+        if (f == null || _repo == null || _filesOwner == null) return;
+        new FileCompareWindow(_repo, _filesOwner, f, _headHash != null, SvgAsText.IsChecked == true).Show(this);
     }
 
     // ───────────────────────── operations ─────────────────────────
@@ -1141,6 +1049,8 @@ public partial class MainWindow : Window
         var first = files[0];
         if (files.Count == 1)
         {
+            menu.Items.Insert(0, new Separator());
+            menu.Items.Insert(0, Item("Open in compare window", () => { OpenCompare(first); return Task.CompletedTask; }));
             menu.Items.Add(LfsMenu(first));
             menu.Items.Add(new Separator());
         }

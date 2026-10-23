@@ -1,0 +1,71 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="using:ClockworkGit.UI"
+        x:Class="ClockworkGit.FileCompareWindow"
+        Title="File Compare" Width="1500" Height="950"
+        WindowStartupLocation="CenterOwner"
+        Background="#1e1f22" FontSize="12">
+
+  <Window.Styles>
+    <Style Selector="Button.tool">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Padding" Value="8,3" />
+      <Setter Property="MinWidth" Value="70" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.glyph">
+      <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets" />
+      <Setter Property="FontSize" Value="18" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.label">
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.paneHeader">
+      <Setter Property="Foreground" Value="#c8c8c8" />
+      <Setter Property="Margin" Value="4,3" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+  </Window.Styles>
+
+  <DockPanel>
+    <Border DockPanel.Dock="Top" Background="#2b2d30" BorderBrush="#3c3f41" BorderThickness="0,0,0,1">
+      <StackPanel Orientation="Horizontal" Margin="2" Spacing="2">
+        <Button x:Name="PrevButton" Classes="tool" Click="OnPrev" ToolTip.Tip="Shift+F7 / Alt+Up">
+          <StackPanel><TextBlock Classes="glyph" Text="&#xE74A;" /><TextBlock Classes="label" Text="Prev. Change" /></StackPanel>
+        </Button>
+        <Button x:Name="NextButton" Classes="tool" Click="OnNext" ToolTip.Tip="F7 / Alt+Down">
+          <StackPanel><TextBlock Classes="glyph" Text="&#xE74B;" Foreground="#6aa6ff" /><TextBlock Classes="label" Text="Next Change" /></StackPanel>
+        </Button>
+        <TextBlock x:Name="ChangeCounter" VerticalAlignment="Center" Margin="10,0" Foreground="#9aa0a6" MinWidth="110" />
+        <Border Width="1" Background="#3c3f41" Margin="6,4" />
+        <CheckBox x:Name="IgnoreWs" Content="Ignore whitespace" Margin="8,0" VerticalAlignment="Center" />
+        <RadioButton x:Name="ModeImage" GroupName="cmpmode" Content="Image" IsVisible="False" Margin="8,0,0,0" VerticalAlignment="Center" />
+        <RadioButton x:Name="ModeText" GroupName="cmpmode" Content="Text" IsVisible="False" VerticalAlignment="Center" />
+      </StackPanel>
+    </Border>
+
+    <Border DockPanel.Dock="Bottom" Background="#2b2d30" BorderBrush="#3c3f41" BorderThickness="0,1,0,0" Padding="6,2">
+      <DockPanel>
+        <TextBlock x:Name="StatusRight" DockPanel.Dock="Right" Foreground="#a0a0a0" />
+        <TextBlock x:Name="StatusText" Text="Ready" />
+      </DockPanel>
+    </Border>
+
+    <Panel>
+      <Grid x:Name="TextPanel" RowDefinitions="Auto,*" ColumnDefinitions="*,14">
+        <Grid ColumnDefinitions="46,*,2,46,*" Background="#2b2d30">
+          <TextBlock x:Name="LeftHeader" Grid.Column="1" Classes="paneHeader" />
+          <TextBlock x:Name="RightHeader" Grid.Column="4" Classes="paneHeader" />
+        </Grid>
+        <ListBox x:Name="Rows" Grid.Row="1" Classes="diff" SelectionMode="Multiple" Background="#1e1f22" Padding="0"
+                 AutoScrollToSelectedItem="False"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                 ItemTemplate="{StaticResource DiffRowTemplate}" />
+        <ui:OverviewRuler x:Name="Ruler" Grid.Row="1" Grid.Column="1" />
+      </Grid>
+      <ui:ImageCompareView x:Name="ImageView" IsVisible="False" />
+    </Panel>
+  </DockPanel>
+</Window>

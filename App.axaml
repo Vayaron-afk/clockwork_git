@@ -1,8 +1,49 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="using:ClockworkGit.UI"
+             xmlns:git="using:ClockworkGit.Git"
              x:Class="ClockworkGit.App"
              RequestedThemeVariant="Dark">
   <Application.Styles>
     <FluentTheme DensityStyle="Compact" />
+    <Style Selector="TextBlock.mono">
+      <Setter Property="FontFamily" Value="Cascadia Mono,Consolas,monospace" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.lineNo">
+      <Setter Property="FontFamily" Value="Cascadia Mono,Consolas,monospace" />
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="Foreground" Value="#6f737a" />
+      <Setter Property="HorizontalAlignment" Value="Right" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Margin" Value="0,0,6,0" />
+    </Style>
+    <Style Selector="ListBox.diff ListBoxItem">
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    </Style>
   </Application.Styles>
+
+  <Application.Resources>
+    <!-- One side-by-side diff row; shared by the bottom diff panel and the File Compare window. -->
+    <DataTemplate x:Key="DiffRowTemplate" x:DataType="git:DiffRow">
+      <Grid ColumnDefinitions="46,*,2,46,*" Height="17">
+        <TextBlock Classes="lineNo" Text="{Binding LeftNo}" />
+        <Border Grid.Column="1" Background="{Binding LeftBg}" ClipToBounds="True">
+          <ui:DiffText Classes="mono" Margin="4,0" Value="{Binding LeftText}"
+                       HiStart="{Binding LeftHiStart}" HiLength="{Binding LeftHiLength}"
+                       HiBrush="{x:Static git:DiffRow.RemovedHi}" />
+        </Border>
+        <Border Grid.Column="2" Background="#3c3f41" />
+        <TextBlock Grid.Column="3" Classes="lineNo" Text="{Binding RightNo}" />
+        <Border Grid.Column="4" Background="{Binding RightBg}" ClipToBounds="True">
+          <ui:DiffText Classes="mono" Margin="4,0" Value="{Binding RightText}"
+                       HiStart="{Binding RightHiStart}" HiLength="{Binding RightHiLength}"
+                       HiBrush="{x:Static git:DiffRow.AddedHi}" />
+        </Border>
+      </Grid>
+    </DataTemplate>
+  </Application.Resources>
 </Application>
