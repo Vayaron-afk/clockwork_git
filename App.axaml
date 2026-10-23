@@ -57,6 +57,21 @@
       <Setter Property="MinHeight" Value="0" />
       <Setter Property="HorizontalContentAlignment" Value="Stretch" />
     </Style>
+    <!-- Annotation at the right edge of a diff line (Unity GUID → asset name). -->
+    <Style Selector="Border.note">
+      <Setter Property="HorizontalAlignment" Value="Right" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Background" Value="#E6202833" />
+      <Setter Property="BorderBrush" Value="#4a6a90" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="3" />
+      <Setter Property="Padding" Value="5,0" />
+      <Setter Property="Margin" Value="0,0,3,0" />
+    </Style>
+    <Style Selector="Border.note TextBlock">
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="Foreground" Value="#a9c8ee" />
+    </Style>
   </Application.Styles>
 
   <Application.Resources>
@@ -65,16 +80,28 @@
       <Grid ColumnDefinitions="46,*,2,46,*" Height="17">
         <TextBlock Classes="lineNo" Text="{Binding LeftNo}" />
         <Border Grid.Column="1" Background="{Binding LeftBg}" ClipToBounds="True">
-          <ui:DiffText Classes="mono" Margin="4,0" Value="{Binding LeftText}"
-                       HiStart="{Binding LeftHiStart}" HiLength="{Binding LeftHiLength}"
-                       HiBrush="{x:Static git:DiffRow.RemovedHi}" />
+          <Panel>
+            <ui:DiffText Classes="mono" Margin="4,0" Value="{Binding LeftText}"
+                         HiStart="{Binding LeftHiStart}" HiLength="{Binding LeftHiLength}"
+                         HiBrush="{x:Static git:DiffRow.RemovedHi}" />
+            <Border Classes="note" IsVisible="{Binding LeftNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                    ToolTip.Tip="{Binding LeftNoteTip}">
+              <TextBlock Text="{Binding LeftNote}" />
+            </Border>
+          </Panel>
         </Border>
         <Border Grid.Column="2" Background="#3c3f41" />
         <TextBlock Grid.Column="3" Classes="lineNo" Text="{Binding RightNo}" />
         <Border Grid.Column="4" Background="{Binding RightBg}" ClipToBounds="True">
-          <ui:DiffText Classes="mono" Margin="4,0" Value="{Binding RightText}"
-                       HiStart="{Binding RightHiStart}" HiLength="{Binding RightHiLength}"
-                       HiBrush="{x:Static git:DiffRow.AddedHi}" />
+          <Panel>
+            <ui:DiffText Classes="mono" Margin="4,0" Value="{Binding RightText}"
+                         HiStart="{Binding RightHiStart}" HiLength="{Binding RightHiLength}"
+                         HiBrush="{x:Static git:DiffRow.AddedHi}" />
+            <Border Classes="note" IsVisible="{Binding RightNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                    ToolTip.Tip="{Binding RightNoteTip}">
+              <TextBlock Text="{Binding RightNote}" />
+            </Border>
+          </Panel>
         </Border>
       </Grid>
     </DataTemplate>

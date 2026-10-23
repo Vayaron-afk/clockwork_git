@@ -27,6 +27,12 @@ Git-клиент для личного пользования в духе SmartG
 - Stash: save, apply, pop, drop.
 - Конфликты: плашка Continue/Abort для merge/cherry-pick/revert/rebase, «take ours / take theirs».
 
+**Unity**
+- В diff `.mat`, `.prefab`, `.unity`, `.asset`, `.asmdef` и других файлов со ссылками `guid: …` справа от строки
+  показывается имя ассета: «→ ash_body_basecolor.png», полный путь — во всплывающей подсказке. Индекс GUID → путь
+  строится из `.meta`-файлов рабочей копии (≈0,15 с на 3500 файлов) и обновляется раз в пару минут.
+  Встроенные ресурсы Unity помечаются как «built-in», ссылки на отсутствующие ассеты — как «missing asset».
+
 **File Compare** — двойной клик по файлу (или кнопка «Open in compare window»)
 - Файл целиком, строки выровнены, полоса-обзор изменений справа, Prev/Next Change, Ignore whitespace.
 
@@ -85,6 +91,7 @@ dotnet publish -c Release -r win-x64 --self-contained false -o publish
 | `Controls/` | Отрисовка графа, текст строки diff с подсветкой, полоса-обзор, сравнение картинок |
 | `Imaging/` | Декодирование (Skia, TGA, Magick.NET), попиксельная разница, перенос в Avalonia |
 | `Services/` | Настройки, сценарии Track/Untrack для LFS |
+| `Unity/` | Индекс GUID → путь ассета из `.meta` для подписей в diff |
 | `Utils/` | Форматирование, открытие в Проводнике, пункты контекстного меню |
 
 Принципы: всё через git CLI (`-z`-вывод там, где есть пути), долгие операции асинхронны, а устаревшие

@@ -4,6 +4,7 @@ global using ClockworkGit.Git;
 global using ClockworkGit.Imaging;
 global using ClockworkGit.Models;
 global using ClockworkGit.Services;
+global using ClockworkGit.Unity;
 global using ClockworkGit.Utils;
 global using ClockworkGit.ViewModels;
 global using ClockworkGit.Views;

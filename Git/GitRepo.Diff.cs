@@ -30,7 +30,11 @@ public sealed partial class GitRepo
         if (owner.IsWorkingTree && (f.IsUntracked || (!hasHead && f.IndexStatus == 'A')))
             return new DiffResult("", await Task.Run(() => DiffParser.FromNewFile(FullPath(f.RelPath), max)));
         var diff = await Diff(owner, f, fullFile ? -1 : 3, ignoreWhitespace, mode);
-        return new DiffResult(diff, await Task.Run(() => DiffParser.SideBySide(diff, fullFile, max)));
+        var rows = await Task.Run(() => DiffParser.SideBySide(diff, fullFile, max));
+        // Unity YAML/asmdef: name the assets behind GUIDs. The index is only built when a diff mentions one.
+        if (diff.Contains("guid:", StringComparison.OrdinalIgnoreCase))
+            (await GuidIndex()).Annotate(rows);
+        return new DiffResult(diff, rows);
     }
 
     /// <summary>Raw bytes of the file before and after the change (LFS objects resolved); null where absent.</summary>

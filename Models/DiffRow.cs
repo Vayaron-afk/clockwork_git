@@ -31,6 +31,12 @@ public sealed class DiffRow
     /// <summary>Index of the "+" line in the raw unified diff, -1 if none.</summary>
     public int RightLine { get; init; } = -1;
 
+    /// <summary>Short annotation shown at the right edge of the line, e.g. "→ ash_body_basecolor.png".</summary>
+    public string? LeftNote { get; set; }
+    public string? LeftNoteTip { get; set; }
+    public string? RightNote { get; set; }
+    public string? RightNoteTip { get; set; }
+
     public bool HasLeft => LeftNo.Length > 0;
     public bool HasRight => RightNo.Length > 0;
 
