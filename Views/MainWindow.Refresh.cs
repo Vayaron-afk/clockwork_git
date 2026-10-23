@@ -33,7 +33,7 @@ public partial class MainWindow
 
         BuildBranchTree(tStashes.Result);
         var repoItem = _repos.FirstOrDefault(r => SamePath(r.Path, repo.Path));
-        if (repoItem != null) repoItem.Branch = _currentBranch ?? "detached";
+        if (repoItem != null) _ = UpdateRepoSummary(repoItem);
         UpdateStateBanner();
         UpdateStatusRight();
         await ReloadLog(selHash, selFile);

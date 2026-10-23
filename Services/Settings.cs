@@ -16,6 +16,8 @@ public sealed class Settings
     public Dictionary<string, List<string>> ShownRefs { get; set; } = new();
     public FileSortColumn FilesSort { get; set; } = FileSortColumn.Path;
     public bool FilesSortDescending { get; set; }
+    /// <summary>Background fetch interval for all repositories; 0 turns it off.</summary>
+    public int AutoFetchMinutes { get; set; } = 10;
 
     public static Settings Load()
     {

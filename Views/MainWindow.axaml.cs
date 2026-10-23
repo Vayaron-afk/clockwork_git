@@ -90,14 +90,17 @@ public partial class MainWindow : Window
 
         Opened += (_, _) =>
         {
-            _ = UpdateRepoBranches();
+            _ = UpdateRepoSummaries();
             var last = _repos.FirstOrDefault(r => SamePath(r.Path, _settings.LastRepository)) ?? _repos.FirstOrDefault();
             if (last != null) ReposList.SelectedItem = last;
+            StartAutoFetch();
         };
         // Like SmartGit: coming back to the window picks up changes made elsewhere.
         Activated += async (_, _) =>
         {
-            if (_repo != null && !_busy && (DateTime.Now - _lastRefresh).TotalSeconds > 2) await RefreshAll();
+            if ((DateTime.Now - _lastRefresh).TotalSeconds <= 2) return;
+            _ = UpdateRepoSummaries();
+            if (_repo != null && !_busy) await RefreshAll();
         };
     }
 

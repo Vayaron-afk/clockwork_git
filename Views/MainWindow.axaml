@@ -57,6 +57,14 @@
         <MenuItem Header="Open in _Explorer" Click="OnOpenExplorer" />
         <MenuItem Header="Git _LFS…" Click="OnOpenLfs" />
         <Separator />
+        <MenuItem Header="Fetch _all repositories now" Click="OnFetchAllRepos" />
+        <MenuItem x:Name="AutoFetchMenu" Header="Auto-_fetch">
+          <MenuItem Header="Off" ToggleType="Radio" GroupName="autofetch" Tag="0" Click="OnAutoFetchInterval" />
+          <MenuItem Header="Every 5 minutes" ToggleType="Radio" GroupName="autofetch" Tag="5" Click="OnAutoFetchInterval" />
+          <MenuItem Header="Every 10 minutes" ToggleType="Radio" GroupName="autofetch" Tag="10" Click="OnAutoFetchInterval" />
+          <MenuItem Header="Every 30 minutes" ToggleType="Radio" GroupName="autofetch" Tag="30" Click="OnAutoFetchInterval" />
+        </MenuItem>
+        <Separator />
         <MenuItem Header="E_xit" Click="OnExit" />
       </MenuItem>
       <MenuItem Header="_Local">
@@ -160,10 +168,11 @@
         <ListBox x:Name="ReposList" Grid.Row="1" Classes="dense">
           <ListBox.ItemTemplate>
             <DataTemplate>
-              <StackPanel Orientation="Horizontal" Spacing="6" Height="22">
-                <TextBlock Text="&#xE8B7;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" VerticalAlignment="Center" Foreground="#c8a060" />
-                <TextBlock Text="{Binding Display}" VerticalAlignment="Center" />
-              </StackPanel>
+              <DockPanel Height="22" ToolTip.Tip="{Binding Tip}">
+                <TextBlock DockPanel.Dock="Left" Text="&#xE8B7;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" VerticalAlignment="Center" Foreground="#c8a060" Margin="0,0,6,0" />
+                <TextBlock DockPanel.Dock="Right" Text="{Binding Badges}" Foreground="{Binding BadgeBrush}" FontSize="11" VerticalAlignment="Center" Margin="6,0,2,0" />
+                <TextBlock Text="{Binding Display}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+              </DockPanel>
             </DataTemplate>
           </ListBox.ItemTemplate>
         </ListBox>

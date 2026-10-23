@@ -17,18 +17,9 @@ public partial class MainWindow
             _repos.Add(item);
             _settings.Repositories.Add(path);
             _settings.Save();
-            _ = UpdateRepoBranches();
+            _ = UpdateRepoSummary(item);
         }
         if (select) ReposList.SelectedItem = item;
-    }
-
-    async Task UpdateRepoBranches()
-    {
-        foreach (var r in _repos.ToList())
-        {
-            var res = await GitRunner.RunAsync(r.Path, "symbolic-ref", "--short", "-q", "HEAD");
-            r.Branch = res.Ok ? res.Output.Trim() : Directory.Exists(r.Path) ? "detached" : "missing";
-        }
     }
 
     async Task OpenRepo(RepoItem item)
