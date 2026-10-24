@@ -202,6 +202,8 @@ public partial class MainWindow
                 lfs.Items.Add(new MenuItem { Header = "Rule is not in the root .gitattributes", IsEnabled = false });
         }
         lfs.Items.Add(new Separator());
+        AddLockItems(lfs, f);
+        lfs.Items.Add(new Separator());
         lfs.Items.Add(Item("Open LFS window…", OpenLfs));
         return lfs;
     }

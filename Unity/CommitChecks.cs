@@ -10,12 +10,19 @@ public static class CommitChecks
     const string ProjectMarker = "ProjectSettings/ProjectVersion.txt";
 
     /// <param name="stageAll">Whether the commit stages every change (otherwise only staged files are committed).</param>
-    public static async Task<List<CommitWarning>> Run(GitRepo repo, IReadOnlyList<FileChange> workFiles, bool stageAll)
+    /// <param name="locks">Known LFS locks by path: committing a file someone else locked makes the push fail.</param>
+    public static async Task<List<CommitWarning>> Run(GitRepo repo, IReadOnlyList<FileChange> workFiles, bool stageAll,
+        IReadOnlyDictionary<string, LfsLock>? locks = null)
     {
         var committing = workFiles.Where(f => !f.IsConflict && (stageAll || f.IsStaged))
             .GroupBy(f => f.RelPath).ToDictionary(g => g.Key, g => g.First());
         var warnings = new List<CommitWarning>();
         if (committing.Count == 0) return warnings;
+
+        if (locks != null)
+            foreach (var path in committing.Keys)
+                if (locks.TryGetValue(path, out var l) && !l.IsMine)
+                    warnings.Add(new(path, $"Locked in LFS by {l.Owner} {l.SinceText}: the server will reject pushing changes to it."));
 
         var tracked = (await repo.Run("ls-files", "-z")).Output.Split('\0', StringSplitOptions.RemoveEmptyEntries).ToHashSet();
         var assetRoots = tracked.Where(p => p.EndsWith(ProjectMarker))

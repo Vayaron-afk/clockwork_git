@@ -24,6 +24,29 @@ public sealed class FileChange : Observable
     /// <summary>The path falls under a filter=lfs rule (at the commit, or in the working tree).</summary>
     public bool IsLfs { get => _isLfs; set => Set(ref _isLfs, value); }
 
+    static readonly IBrush MyLock = new ImmutableSolidColorBrush(Color.Parse("#2f6b45"));
+    static readonly IBrush TheirLock = new ImmutableSolidColorBrush(Color.Parse("#8a3030"));
+
+    LfsLock? _lock;
+    /// <summary>LFS server lock on this path, if any.</summary>
+    public LfsLock? Lock
+    {
+        get => _lock;
+        set
+        {
+            if (!Set(ref _lock, value)) return;
+            Raise(nameof(HasLock));
+            Raise(nameof(LockText));
+            Raise(nameof(LockBrush));
+            Raise(nameof(LockTip));
+        }
+    }
+
+    public bool HasLock => Lock != null;
+    public string LockText => Lock == null ? "" : "🔒 " + Lock.OwnerText;
+    public IBrush LockBrush => Lock?.IsMine == true ? MyLock : TheirLock;
+    public string? LockTip => Lock == null ? null : $"Locked by {Lock.OwnerText} {Lock.SinceText} (LFS lock #{Lock.Id})";
+
     public string Name => RelPath[(RelPath.LastIndexOf('/') + 1)..];
     public string Folder => RelPath.LastIndexOf('/') is var i and >= 0 ? RelPath[..i] : "";
     public string StatusLetter => Status.ToString();

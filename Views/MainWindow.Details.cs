@@ -50,7 +50,7 @@ public partial class MainWindow
             if (files.Count > 0)
             {
                 // Same checks as the commit dialog, assuming everything gets committed.
-                var warnings = await CommitChecks.Run(repo, files, stageAll: true);
+                var warnings = await CommitChecks.Run(repo, files, stageAll: true, _locks);
                 if (gen != _detailsGen) return;
                 if (warnings.Count > 0)
                     DetailHeader.Text += $"\n⚠ {warnings.Count} warning(s) for the next commit: " +
@@ -81,7 +81,11 @@ public partial class MainWindow
 
         var lfs = await repo.LfsAttributed(files.Select(f => f.RelPath).ToList(), c.IsWorkingTree ? null : c.Hash);
         if (gen != _detailsGen) return;
-        foreach (var f in files) f.IsLfs = lfs.Contains(f.RelPath);
+        foreach (var f in files)
+        {
+            f.IsLfs = lfs.Contains(f.RelPath);
+            f.Lock = _locks.GetValueOrDefault(f.RelPath);
+        }
 
         _filesOwner = c;
         _ownerFiles = files;
@@ -206,6 +210,10 @@ public partial class MainWindow
     void OpenLfs()
     {
         if (_repo == null) return;
-        new LfsWindow(_repo, RefreshAll).Show(this);
+        new LfsWindow(_repo, async () =>
+        {
+            await RefreshLocks();
+            await RefreshAll();
+        }).Show(this);
     }
 }

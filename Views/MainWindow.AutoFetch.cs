@@ -7,9 +7,6 @@ namespace ClockworkGit.Views;
 // Status of all repositories in the list and background fetch.
 public partial class MainWindow
 {
-    /// <summary>Background fetches must never pop up a login window; a failure is shown in the tooltip instead.</summary>
-    static readonly Dictionary<string, string> BackgroundEnv = new() { ["GCM_INTERACTIVE"] = "never" };
-
     DispatcherTimer? _fetchTimer;
     bool _fetchingRepos;
 
@@ -52,7 +49,8 @@ public partial class MainWindow
 
         var behindBefore = item.Summary?.Behind ?? 0;
         item.Fetching = true;
-        var r = await GitRunner.RunWithEnvAsync(item.Path, BackgroundEnv, "fetch", "--all", "--prune", "--quiet");
+        // Background fetches must never pop up a login window; a failure is shown in the tooltip instead.
+        var r = await GitRunner.RunWithEnvAsync(item.Path, GitRunner.NoLoginPrompt, "fetch", "--all", "--prune", "--quiet");
         item.Fetching = false;
         item.LastFetch = DateTime.Now;
         item.FetchError = r.Ok ? null : r.LastLine ?? "git fetch failed";
@@ -60,7 +58,11 @@ public partial class MainWindow
 
         if (item.Summary is { Behind: var behind } summary && behind > behindBefore)
             SetStatus($"{item.Name}: {behind} new commit(s) on {summary.Upstream}");
-        if (isCurrent && !_busy) await RefreshAll();
+        if (isCurrent && !_busy)
+        {
+            await RefreshLocks();
+            await RefreshAll();
+        }
     }
 
     async Task UpdateRepoSummaries()

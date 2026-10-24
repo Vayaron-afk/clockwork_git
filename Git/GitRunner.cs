@@ -6,6 +6,9 @@ namespace ClockworkGit.Git;
 /// <summary>Runs the git CLI. Never prompts: no terminal prompts, no editors.</summary>
 public static class GitRunner
 {
+    /// <summary>For background calls that reach the server: fail instead of popping up a Git Credential Manager login.</summary>
+    public static readonly IReadOnlyDictionary<string, string> NoLoginPrompt = new Dictionary<string, string> { ["GCM_INTERACTIVE"] = "never" };
+
     static ProcessStartInfo CreateStartInfo(string repo, IEnumerable<string> args, IReadOnlyDictionary<string, string>? env = null)
     {
         var psi = new ProcessStartInfo("git")

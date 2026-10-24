@@ -102,8 +102,8 @@ public partial class MainWindow
         if (repo == null || _busy) return;
         var staged = _workFiles.Count(f => f.IsStaged);
         SetStatus("Checking the commit…");
-        var checkAll = CommitChecks.Run(repo, _workFiles, stageAll: true);
-        var checkStaged = CommitChecks.Run(repo, _workFiles, stageAll: false);
+        var checkAll = CommitChecks.Run(repo, _workFiles, stageAll: true, _locks);
+        var checkStaged = CommitChecks.Run(repo, _workFiles, stageAll: false, _locks);
         await Task.WhenAll(checkAll, checkStaged);
         SetStatus("");
         var request = await Dialogs.Commit(this, staged, _workFiles.Count, _undoneMessage, () => repo.CommitMessage("HEAD"),

@@ -39,7 +39,9 @@ public partial class MainWindow
         FilesList.ItemsSource = null;
         ShowDiff(null);
         FilterBox.Text = "";
+        _locks = new();
         await RefreshAll();
+        _ = RefreshLocks(); // slow network call; badges appear when it returns
     }
 
     async void OnAddRepo(object? sender, RoutedEventArgs e)

@@ -119,6 +119,6 @@ public partial class MainWindow
         var text = _currentBranch ?? $"detached at {_headHash?[..8]}";
         if (head is { UpstreamShort.Length: > 0 })
             text += $"  →  {head.UpstreamShort}  {(head.TrackShort.Length == 0 ? "in sync" : head.TrackShort)}";
-        StatusRight.Text = text;
+        StatusRight.Text = text + LocksSummary();
     }
 }

@@ -30,7 +30,54 @@ public partial class LfsWindow : Window
         {
             await LoadFiles();
             await RecalcCache();
+            await LoadLocks();
         };
+    }
+
+    // ───────────── Locks ─────────────
+
+    async Task LoadLocks()
+    {
+        LocksStatus.Text = "Asking the LFS server…";
+        var locks = await _repo.LfsLocks();
+        LocksList.ItemsSource = locks?.OrderBy(l => l.Path, StringComparer.CurrentCultureIgnoreCase).ToList();
+        LocksStatus.Text = locks == null ? "The LFS server did not answer (offline, signed out, or locking not supported)."
+            : locks.Count == 0 ? "No locks."
+            : $"{locks.Count} lock(s), {locks.Count(l => l.IsMine)} yours.";
+    }
+
+    async void OnRefreshLocks(object? sender, RoutedEventArgs e) => await LoadLocks();
+
+    async void OnUnlock(object? sender, RoutedEventArgs e)
+    {
+        var selected = LocksList.SelectedItems?.OfType<LfsLock>().ToList() ?? new();
+        if (selected.Count == 0) return;
+        var others = selected.Where(l => !l.IsMine).ToList();
+        if (others.Count > 0 && !await Dialogs.Confirm(this, "Force unlock",
+                $"{others.Count} of the selected lock(s) belong to someone else ({string.Join(", ", others.Select(l => l.Owner).Distinct())}). " +
+                "Breaking them can make those people lose work. Unlock anyway?", "Force unlock"))
+            return;
+
+        UnlockButton.IsEnabled = false;
+        try
+        {
+            foreach (var l in selected)
+            {
+                // By id: works even when the file is gone from the working tree.
+                var r = l.IsMine ? await _repo.Run("lfs", "unlock", "--id", l.Id) : await _repo.Run("lfs", "unlock", "--force", "--id", l.Id);
+                if (!r.Ok)
+                {
+                    await Dialogs.ShowMessage(this, "git lfs unlock failed", $"{l.Path}\n\n{r.Message}");
+                    break;
+                }
+            }
+        }
+        finally
+        {
+            UnlockButton.IsEnabled = true;
+        }
+        await LoadLocks();
+        await _changed();
     }
 
     // ───────────── Files ─────────────

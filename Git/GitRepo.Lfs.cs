@@ -74,6 +74,37 @@ public sealed partial class GitRepo
             : 0;
     }
 
+    /// <summary>
+    /// Locks on the LFS server (one network round trip, ~1–2 s); null when the server cannot be asked
+    /// (offline, no credentials, or locking not supported). Never prompts for a login.
+    /// </summary>
+    public async Task<List<LfsLock>?> LfsLocks()
+    {
+        var r = await RunWithEnv(GitRunner.NoLoginPrompt, "lfs", "locks", "--verify", "--json");
+        if (r.Ok && r.Output.TrimStart().StartsWith('{'))
+        {
+            using var doc = JsonDocument.Parse(r.Output);
+            return ParseLocks(doc.RootElement, "ours", mine: true).Concat(ParseLocks(doc.RootElement, "theirs", mine: false)).ToList();
+        }
+        // Servers without lock verification still list locks, only without ownership.
+        r = await RunWithEnv(GitRunner.NoLoginPrompt, "lfs", "locks", "--json");
+        if (!r.Ok || !r.Output.TrimStart().StartsWith('[')) return null;
+        using var plain = JsonDocument.Parse(r.Output);
+        return plain.RootElement.EnumerateArray().Select(e => ParseLock(e, mine: false)).ToList();
+    }
+
+    static IEnumerable<LfsLock> ParseLocks(JsonElement root, string group, bool mine) =>
+        root.TryGetProperty(group, out var list) && list.ValueKind == JsonValueKind.Array
+            ? list.EnumerateArray().Select(e => ParseLock(e, mine)).ToList()
+            : [];
+
+    static LfsLock ParseLock(JsonElement e, bool mine) => new(
+        e.TryGetProperty("id", out var id) ? id.ToString() : "",
+        e.TryGetProperty("path", out var path) ? path.GetString() ?? "" : "",
+        e.TryGetProperty("owner", out var owner) && owner.TryGetProperty("name", out var name) ? name.GetString() ?? "" : "",
+        e.TryGetProperty("locked_at", out var at) && DateTimeOffset.TryParse(at.GetString(), out var when) ? when : DateTimeOffset.MinValue,
+        mine);
+
     /// <summary>Tracked files that match an LFS rule but are still stored as regular git blobs at HEAD.</summary>
     public async Task<List<string>> NotYetInLfs()
     {

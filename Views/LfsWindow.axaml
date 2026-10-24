@@ -79,6 +79,36 @@
       </DockPanel>
     </TabItem>
 
+    <TabItem Header="Locks">
+      <DockPanel Margin="6">
+        <TextBlock DockPanel.Dock="Top" Classes="hint" Margin="0,0,0,6"
+                   Text="Files locked on the LFS server, so only one person edits a binary at a time. Lock a file from its context menu in the main window (LFS → Lock file)." />
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+          <Button Content="Refresh" Click="OnRefreshLocks" />
+          <Button x:Name="UnlockButton" Content="Unlock selected" Click="OnUnlock" />
+          <TextBlock x:Name="LocksStatus" Classes="hint" VerticalAlignment="Center" />
+        </StackPanel>
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,180,150,80" Margin="6,2" Background="#232427">
+          <TextBlock Classes="colhead" Text="Path" />
+          <TextBlock Grid.Column="1" Classes="colhead" Text="Owner" />
+          <TextBlock Grid.Column="2" Classes="colhead" Text="Locked" />
+          <TextBlock Grid.Column="3" Classes="colhead" Text="ID" />
+        </Grid>
+        <ListBox x:Name="LocksList" Classes="dense" SelectionMode="Multiple">
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <Grid ColumnDefinitions="*,180,150,80" Height="22">
+                <TextBlock Text="{Binding Path}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="1" Text="{Binding OwnerText}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="2" Text="{Binding SinceText}" Foreground="#9aa0a6" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="3" Text="{Binding Id}" Foreground="#7d838a" VerticalAlignment="Center" />
+              </Grid>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </DockPanel>
+    </TabItem>
+
     <TabItem Header="Maintenance">
       <ScrollViewer>
         <StackPanel Margin="10" Spacing="22" MaxWidth="820" HorizontalAlignment="Left">
