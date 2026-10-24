@@ -47,6 +47,16 @@ public partial class MainWindow
                 : $"{files.Count} changed: {staged} staged, {unstaged} unstaged, {untracked} untracked"
                   + (conflicted > 0 ? $", {conflicted} conflicted" : "");
             DetailMessage.Text = "Working Tree / Index";
+            if (files.Count > 0)
+            {
+                // Same checks as the commit dialog, assuming everything gets committed.
+                var warnings = await CommitChecks.Run(repo, files, stageAll: true);
+                if (gen != _detailsGen) return;
+                if (warnings.Count > 0)
+                    DetailHeader.Text += $"\n⚠ {warnings.Count} warning(s) for the next commit: " +
+                                         string.Join(", ", warnings.Take(4).Select(w => Path.GetFileName(w.Path.TrimEnd('/')))) +
+                                         (warnings.Count > 4 ? ", …" : "") + " — details in the Commit dialog";
+            }
         }
         else
         {

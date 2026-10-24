@@ -106,8 +106,10 @@ public static class Dialogs
         return await w.ShowDialog<string?>(owner);
     }
 
+    /// <param name="warningsFor">Pre-commit check results for "stage all" = true / false.</param>
     public static async Task<CommitRequest?> Commit(
-        Window owner, int staged, int total, string? initialMessage, Func<Task<string>> lastMessage)
+        Window owner, int staged, int total, string? initialMessage, Func<Task<string>> lastMessage,
+        Func<bool, IReadOnlyList<CommitWarning>> warningsFor)
     {
         var message = new TextBox
         {
@@ -134,8 +136,36 @@ public static class Dialogs
         var commitPush = Btn("Commit & Push");
         var cancel = Btn("Cancel", isCancel: true);
 
-        var panel = new StackPanel { Spacing = 8, Children = { info, message, stageAll, amend, ButtonRow(commit, commitPush, cancel) } };
-        var w = MakeWindow("Commit", panel, 620);
+        // Unity .meta and large-file warnings for what this commit would contain.
+        var warningText = new SelectableTextBlock { TextWrapping = TextWrapping.Wrap, FontSize = 11 };
+        var stageFixes = new CheckBox { IsChecked = true };
+        var warningBox = new Border
+        {
+            Background = new SolidColorBrush(Color.Parse("#4a3a12")),
+            CornerRadius = new CornerRadius(3),
+            Padding = new Thickness(8, 6),
+            Child = new StackPanel { Spacing = 6, Children = { warningText, stageFixes } },
+        };
+        IReadOnlyList<CommitWarning> warnings = [];
+
+        void ShowWarnings()
+        {
+            warnings = warningsFor(stageAll.IsVisible && stageAll.IsChecked == true);
+            warningBox.IsVisible = warnings.Count > 0;
+            const int shown = 8;
+            warningText.Text = $"⚠ {warnings.Count} warning(s):\n" +
+                               string.Join("\n", warnings.Take(shown).Select(x => $"• {x.Path} — {x.Message}")) +
+                               (warnings.Count > shown ? $"\n… and {warnings.Count - shown} more" : "");
+            var fixable = warnings.Where(x => x.IsFixable).Select(x => x.FixPath!).Distinct().Count();
+            stageFixes.IsVisible = fixable > 0;
+            stageFixes.Content = $"Also stage the {fixable} .meta file(s) that fix this";
+        }
+
+        stageAll.IsCheckedChanged += (_, _) => ShowWarnings();
+        ShowWarnings();
+
+        var panel = new StackPanel { Spacing = 8, Children = { info, message, stageAll, amend, warningBox, ButtonRow(commit, commitPush, cancel) } };
+        var w = MakeWindow("Commit", panel, 720);
 
         amend.IsCheckedChanged += async (_, _) =>
         {
@@ -147,7 +177,10 @@ public static class Dialogs
         {
             var text = message.Text?.Trim() ?? "";
             if (text.Length == 0) { message.Focus(); return; }
-            w.Close(new CommitRequest(text, amend.IsChecked == true, stageAll.IsVisible && stageAll.IsChecked == true, push));
+            var fixes = stageFixes.IsVisible && stageFixes.IsChecked == true
+                ? warnings.Where(x => x.IsFixable).Select(x => x.FixPath!).Distinct().ToList()
+                : [];
+            w.Close(new CommitRequest(text, amend.IsChecked == true, stageAll.IsVisible && stageAll.IsChecked == true, push, fixes));
         }
 
         commit.Click += (_, _) => Finish(false);

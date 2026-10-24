@@ -101,11 +101,18 @@ public partial class MainWindow
         var repo = _repo;
         if (repo == null || _busy) return;
         var staged = _workFiles.Count(f => f.IsStaged);
-        var request = await Dialogs.Commit(this, staged, _workFiles.Count, _undoneMessage, () => repo.CommitMessage("HEAD"));
+        SetStatus("Checking the commit…");
+        var checkAll = CommitChecks.Run(repo, _workFiles, stageAll: true);
+        var checkStaged = CommitChecks.Run(repo, _workFiles, stageAll: false);
+        await Task.WhenAll(checkAll, checkStaged);
+        SetStatus("");
+        var request = await Dialogs.Commit(this, staged, _workFiles.Count, _undoneMessage, () => repo.CommitMessage("HEAD"),
+            all => all ? checkAll.Result : checkStaged.Result);
         if (request == null) return;
         await Do(async () =>
         {
             if (request.StageAll && !await Exec("add", "-A")) return;
+            if (request.StageFirst.Count > 0 && !await Exec(["add", "-A", "--", .. request.StageFirst])) return;
             var tmp = GitRepo.WriteTempMessage(request.Message);
             try
             {
