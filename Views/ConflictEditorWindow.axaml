@@ -1,0 +1,108 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="using:ClockworkGit.Controls"
+        xmlns:vm="using:ClockworkGit.ViewModels"
+        x:Class="ClockworkGit.Views.ConflictEditorWindow"
+        Title="Resolve Conflict" Width="1500" Height="950"
+        WindowStartupLocation="CenterOwner"
+        Background="#1e1f22" FontSize="12">
+
+  <Window.Styles>
+    <Style Selector="Button.small">
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="Padding" Value="7,1" />
+      <Setter Property="MinHeight" Value="0" />
+    </Style>
+    <Style Selector="TextBlock.code">
+      <Setter Property="FontFamily" Value="Cascadia Mono,Consolas,monospace" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="Padding" Value="6,4" />
+    </Style>
+    <Style Selector="TextBlock.side">
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Padding" Value="6,2" />
+    </Style>
+  </Window.Styles>
+
+  <DockPanel>
+    <Border DockPanel.Dock="Top" Background="#2b2d30" BorderBrush="#3c3f41" BorderThickness="0,0,0,1" Padding="6,4">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
+          <Button x:Name="SaveResolvedButton" Content="Save &amp; mark resolved" Click="OnSaveResolved" ToolTip.Tip="Write the file and git add it" />
+          <Button x:Name="SaveMarkersButton" Content="Save with markers" Click="OnSaveWithMarkers" ToolTip.Tip="Write the file; open conflicts keep their markers" />
+          <Button Content="Cancel" IsCancel="True" Click="OnCancel" />
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <Button Classes="small" Content="↑ Prev" Click="OnPrev" ToolTip.Tip="Previous unresolved conflict (Shift+F7)" />
+          <Button Classes="small" Content="↓ Next" Click="OnNext" ToolTip.Tip="Next unresolved conflict (F7)" />
+          <TextBlock x:Name="Counter" VerticalAlignment="Center" Margin="8,0" MinWidth="160" />
+          <Border Width="1" Background="#3c3f41" Margin="4,2" />
+          <Button x:Name="AllOursButton" Classes="small" Click="OnAllOurs" />
+          <Button x:Name="AllTheirsButton" Classes="small" Click="OnAllTheirs" />
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <Border DockPanel.Dock="Bottom" Background="#2b2d30" BorderBrush="#3c3f41" BorderThickness="0,1,0,0" Padding="6,2">
+      <TextBlock x:Name="StatusText" Text="Loading…" />
+    </Border>
+
+    <Panel>
+      <ScrollViewer x:Name="TextPanel" Padding="10,6">
+        <ItemsControl x:Name="Segments">
+          <ItemsControl.DataTemplates>
+            <DataTemplate DataType="vm:CommonSegment">
+              <TextBlock Classes="code" Text="{Binding DisplayText}" Foreground="#8a8f98" />
+            </DataTemplate>
+            <DataTemplate DataType="vm:ConflictSegment">
+              <Border Margin="0,6" BorderBrush="#7a5a20" BorderThickness="1" CornerRadius="4" Background="#232220">
+                <StackPanel>
+                  <Border Background="#3a3220" Padding="6,4">
+                    <DockPanel>
+                      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4">
+                        <Button Classes="small" Content="Ours" Tag="ours" Click="OnTake" />
+                        <Button Classes="small" Content="Theirs" Tag="theirs" Click="OnTake" />
+                        <Button Classes="small" Content="Ours + Theirs" Tag="ours+theirs" Click="OnTake" />
+                        <Button Classes="small" Content="Theirs + Ours" Tag="theirs+ours" Click="OnTake" />
+                        <Button Classes="small" Content="Base" Tag="base" Click="OnTake" ToolTip.Tip="Keep the common ancestor" />
+                        <Button Classes="small" Content="Neither" Tag="neither" Click="OnTake" ToolTip.Tip="Remove the whole block" />
+                      </StackPanel>
+                      <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding Status}" Foreground="{Binding StatusBrush}" VerticalAlignment="Center" />
+                      </StackPanel>
+                    </DockPanel>
+                  </Border>
+                  <Grid ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto">
+                    <TextBlock Classes="side" Text="{Binding OursLabel}" Background="#1f3352" />
+                    <TextBlock Grid.Column="1" Classes="side" Text="Base (common ancestor)" Background="#2e2f33" />
+                    <TextBlock Grid.Column="2" Classes="side" Text="{Binding TheirsLabel}" Background="#1f4228" />
+                    <TextBlock Grid.Row="1" Classes="code" Text="{Binding OursText}" Background="#1a2638" />
+                    <TextBlock Grid.Row="1" Grid.Column="1" Classes="code" Text="{Binding BaseText}" Background="#26272a" Foreground="#a8adb4" />
+                    <TextBlock Grid.Row="1" Grid.Column="2" Classes="code" Text="{Binding TheirsText}" Background="#1a2e1f" />
+                  </Grid>
+                  <TextBlock Text="Result (pick a side above, or edit):" Foreground="#9aa0a6" FontSize="11" Margin="6,6,6,2" />
+                  <TextBox Text="{Binding Resolution, Mode=TwoWay}" AcceptsReturn="True" TextWrapping="Wrap" Margin="6,0,6,6"
+                           FontFamily="Cascadia Mono,Consolas,monospace" MinHeight="40" Watermark="unresolved — choose a side or type the merged lines" />
+                </StackPanel>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.DataTemplates>
+        </ItemsControl>
+      </ScrollViewer>
+
+      <DockPanel x:Name="WholeFilePanel" IsVisible="False" Margin="10">
+        <StackPanel DockPanel.Dock="Top" Spacing="6" Margin="0,0,0,8">
+          <TextBlock x:Name="WholeFileText" TextWrapping="Wrap" />
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Button x:Name="TakeOursFileButton" Click="OnTakeOursFile" />
+            <Button x:Name="TakeTheirsFileButton" Click="OnTakeTheirsFile" />
+          </StackPanel>
+        </StackPanel>
+        <ui:ImageCompareView x:Name="ImageView" IsVisible="False" />
+      </DockPanel>
+    </Panel>
+  </DockPanel>
+</Window>

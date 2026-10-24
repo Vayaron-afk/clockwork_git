@@ -40,7 +40,13 @@ Git-клиент для личного пользования в духе SmartG
   (`git log --reflog --not --all`), с причиной («reset: moving to HEAD~1», «commit (amend)»). Галочка или двойной
   клик выводит коммит в граф с меткой ♻; можно создать на нём ветку, сделать cherry-pick или вернуть ветку на него
   (`reset --keep`, локальные правки не теряются).
-- Конфликты: плашка Continue/Abort для merge/cherry-pick/revert/rebase, «take ours / take theirs».
+- Конфликты: плашка Resolve… / Continue / Abort для merge/cherry-pick/revert/rebase.
+- Редактор конфликтов (двойной клик по конфликтному файлу): стадии индекса заново сливаются `git merge-file --diff3`,
+  так что непересекающиеся правки уже влиты; каждый конфликт — карточка «Ours | Base | Theirs» с кнопками
+  Ours / Theirs / Ours + Theirs / Theirs + Ours / Base / Neither и редактируемым результатом, Prev/Next (F7).
+  Подписи сторон учитывают операцию (в rebase ours и theirs меняются местами). «Save & mark resolved» сохраняет файл
+  с прежними окончаниями строк и делает `git add`. Бинарные файлы и удаление с одной стороны решаются выбором версии,
+  картинки при этом показываются сравнением.
 
 **История файла и Blame** — в контекстном меню файла «History…» / «Blame…»
 - History: коммиты, менявшие файл (`git log --follow`, с переименованиями), детали и diff выбранного коммита,
@@ -79,6 +85,9 @@ Git-клиент для личного пользования в духе SmartG
 | File Compare | `F7` / `Alt+↓` | Следующее изменение |
 | File Compare | `Shift+F7` / `Alt+↑` | Предыдущее изменение |
 | File Compare | `Ctrl+C` / `Esc` | Копировать строки / закрыть |
+| Diff рабочей копии | `Ctrl+B` / `Ctrl+L` | Stage (Unstage) блока / выделенных строк |
+| Интерактивный rebase | `Alt+↑` / `Alt+↓` | Переместить коммит |
+| Редактор конфликтов | `F7` / `Shift+F7` / `Esc` | Следующий / предыдущий нерешённый конфликт / закрыть |
 
 ## Сборка и запуск
 
@@ -106,10 +115,10 @@ dotnet publish -c Release -r win-x64 --self-contained false -o publish
 
 | Папка | Что внутри |
 |---|---|
-| `Git/` | `GitRunner` (запуск git без интерактивных запросов), `GitRepo` (partial: история, diff, LFS), `GraphBuilder` (раскладка графа по линиям), `DiffParser` (unified diff → строки side-by-side) |
+| `Git/` | `GitRunner` (запуск git без интерактивных запросов), `GitRepo` (partial: история, diff, blame, конфликты, LFS, Unity), `GraphBuilder` (раскладка графа по линиям), `DiffParser` (unified diff → строки side-by-side), `PatchBuilder` (патч из выбранных строк), `RebaseTodo` (план rebase без редактора), `MergeFileParser`, `RepoSummary` |
 | `Models/` | Данные: коммиты, ссылки, изменённые файлы, строки diff, LFS-записи |
 | `ViewModels/` | Узлы дерева веток, строки списков для привязки в XAML |
-| `Views/` | Окна: `MainWindow` (partial по областям: Repositories, Refresh, Branches, Details, Staging, Operations, ContextMenus), `FileCompareWindow`, `FileHistoryWindow`, `LfsWindow`, диалоги |
+| `Views/` | Окна: `MainWindow` (partial по областям: Repositories, AutoFetch, Refresh, Branches, Details, Staging, Operations, Rebase, Conflicts, ContextMenus), `FileCompareWindow`, `FileHistoryWindow`, `ConflictEditorWindow`, `InteractiveRebaseWindow`, `LfsWindow`, диалоги |
 | `Controls/` | Отрисовка графа, текст строки diff с подсветкой, полоса-обзор, сравнение картинок |
 | `Imaging/` | Декодирование (Skia, TGA, Magick.NET), попиксельная разница, перенос в Avalonia |
 | `Services/` | Настройки, сценарии Track/Untrack для LFS |
@@ -122,7 +131,8 @@ dotnet publish -c Release -r win-x64 --self-contained false -o publish
 
 ## Ограничения
 
-- Нет stage отдельных ханков/строк и встроенного трёхстороннего merge-редактора.
+- Интерактивный rebase не переносит merge-коммиты и не умеет останавливаться на коммите для правки (`edit`).
+- Частичный stage недоступен для неотслеживаемых и конфликтных файлов — они добавляются целиком.
 - В граф загружается до 2000 последних коммитов отмеченных веток.
 - PSD показывается сведённым изображением, без слоёв.
 - Только Windows (Проводник, иконки Segoe Fluent).

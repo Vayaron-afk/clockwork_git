@@ -38,11 +38,14 @@ public partial class MainWindow
         {
             files = _workFiles;
             DetailAvatar.IsVisible = false;
-            var staged = files.Count(f => f.IsStaged);
+            var conflicted = files.Count(f => f.IsConflict);
+            var staged = files.Count(f => f.IsStaged && !f.IsConflict);
+            var unstaged = files.Count(f => f.WorkStatus != ' ' && !f.IsUntracked && !f.IsConflict);
             var untracked = files.Count(f => f.IsUntracked);
             DetailHeader.Text = files.Count == 0
                 ? "Nothing to commit, working tree clean."
-                : $"{files.Count} changed: {staged} staged, {files.Count(f => f.WorkStatus != ' ' && !f.IsUntracked)} unstaged, {untracked} untracked";
+                : $"{files.Count} changed: {staged} staged, {unstaged} unstaged, {untracked} untracked"
+                  + (conflicted > 0 ? $", {conflicted} conflicted" : "");
             DetailMessage.Text = "Working Tree / Index";
         }
         else

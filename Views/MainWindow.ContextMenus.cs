@@ -147,6 +147,8 @@ public partial class MainWindow
             if (conflicts.Length > 0)
             {
                 menu.Items.Add(new Separator());
+                if (files.Count == 1 && first.IsConflict)
+                    menu.Items.Add(Item("Resolve in conflict editor…", () => OpenConflictEditor(first)));
                 menu.Items.Add(Item("Resolve: take ours", () => TakeSide("--ours", conflicts)));
                 menu.Items.Add(Item("Resolve: take theirs", () => TakeSide("--theirs", conflicts)));
                 menu.Items.Add(Item("Mark resolved (stage)", () => Stage(files.Where(f => f.IsConflict).ToList())));

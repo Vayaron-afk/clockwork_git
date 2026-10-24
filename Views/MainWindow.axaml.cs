@@ -71,7 +71,9 @@ public partial class MainWindow : Window
         };
         FilesList.DoubleTapped += (_, e) =>
         {
-            if ((e.Source as Control)?.DataContext is FileChange f) OpenCompare(f);
+            if ((e.Source as Control)?.DataContext is not FileChange f) return;
+            if (f.IsConflict && _filesOwner?.IsWorkingTree == true) _ = OpenConflictEditor(f);
+            else OpenCompare(f);
         };
         LfsOnly.IsCheckedChanged += (_, _) => RebindFiles();
         SvgAsText.IsCheckedChanged += (_, _) => ShowDiff(SingleSelectedFile());

@@ -146,6 +146,7 @@
     <Border x:Name="StateBanner" DockPanel.Dock="Top" IsVisible="False" Background="#5a4712" Padding="8,4">
       <DockPanel>
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6">
+          <Button Content="Resolve…" Click="OnResolveConflicts" ToolTip.Tip="Open the conflict editor for the first conflicted file" />
           <Button Content="Continue" Click="OnStateContinue" />
           <Button Content="Abort" Click="OnStateAbort" />
         </StackPanel>
