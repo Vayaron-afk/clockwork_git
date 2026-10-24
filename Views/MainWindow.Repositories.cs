@@ -5,9 +5,10 @@ using static ClockworkGit.Utils.MenuFactory;
 
 namespace ClockworkGit.Views;
 
-// Repositories list: add, open, remove.
+// Repository list actions: add, open, remove, and reveal in Explorer.
 public partial class MainWindow
 {
+    /// <summary>Добавляет путь репозитория в список, если его там ещё нет, и при необходимости выбирает его.</summary>
     void AddRepository(string path, bool select)
     {
         var item = _repos.FirstOrDefault(r => SamePath(r.Path, path));
@@ -22,6 +23,7 @@ public partial class MainWindow
         if (select) ReposList.SelectedItem = item;
     }
 
+    /// <summary>Открывает репозиторий из списка, восстанавливает сохранённое состояние представления и обновляет данные.</summary>
     async Task OpenRepo(RepoItem item)
     {
         var repo = Directory.Exists(item.Path) ? await GitRepo.Open(item.Path) : null;
@@ -46,6 +48,7 @@ public partial class MainWindow
         _ = RefreshLocks(); // slow network call; badges appear when it returns
     }
 
+    /// <summary>Запрашивает папку, определяет корень Git и добавляет репозиторий в список.</summary>
     async void OnAddRepo(object? sender, RoutedEventArgs e)
     {
         var picked = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
@@ -64,6 +67,7 @@ public partial class MainWindow
         AddRepository(Path.GetFullPath(top.Output.Trim()), select: true);
     }
 
+    /// <summary>Создаёт контекстные действия для открытия репозитория в проводнике или удаления его из списка.</summary>
     void OnRepoContext(object? sender, ContextRequestedEventArgs e)
     {
         if ((e.Source as Control)?.DataContext is not RepoItem item) return;
@@ -80,10 +84,12 @@ public partial class MainWindow
         e.Handled = true;
     }
 
+    /// <summary>Открывает папку активного репозитория в проводнике Windows.</summary>
     void OnOpenExplorer(object? sender, RoutedEventArgs e)
     {
         if (_repo != null) Shell.OpenFolder(_repo.Path);
     }
 
+    /// <summary>Закрывает окно приложения.</summary>
     void OnExit(object? sender, RoutedEventArgs e) => Close();
 }

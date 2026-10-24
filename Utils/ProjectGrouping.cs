@@ -1,15 +1,16 @@
 namespace ClockworkGit.Utils;
 
-/// <summary>Splits changed files by the project they belong to (a site, a service, the Unity project).</summary>
+/// <summary>Группирует изменённые файлы по проектам, к которым они относятся (сайт, служба, проект Unity).</summary>
 public static class ProjectGrouping
 {
     const string UnityMarker = "/ProjectSettings/ProjectVersion.txt";
 
     /// <summary>
-    /// Marker files (<c>*.csproj</c>, <c>package.json</c>, Unity's ProjectVersion.txt) → their project folders,
-    /// keeping only the outermost ones: a site's ClientApp belongs to the site. Markers at the repository root
-    /// are ignored, otherwise everything would be one group.
+    /// Переданные маркерные файлы (<c>*.csproj</c>, <c>*.fsproj</c>, <c>*.vcxproj</c>, <c>package.json</c>, ProjectVersion.txt Unity) определяют каталоги проектов;
+    /// сохраняются только самые внешние: ClientApp сайта относится к самому сайту. Маркеры в корне репозитория
+    /// без каталога игнорируются, иначе все файлы оказались бы в одной группе.
     /// </summary>
+    /// <remarks>Unity-маркер распознаётся по суффиксу /ProjectSettings/ProjectVersion.txt; путь без родительского проекта ошибочно даёт каталог ProjectSettings.</remarks>
     public static List<string> OutermostRoots(IEnumerable<string> markers)
     {
         var roots = markers
@@ -26,7 +27,7 @@ public static class ProjectGrouping
         return kept;
     }
 
-    /// <summary>The project folder of <paramref name="path"/>; outside any project, its top-level folder.</summary>
+    /// <summary>Каталог проекта для <paramref name="path"/>; если файл не относится к проекту — каталог верхнего уровня.</summary>
     public static string GroupRoot(string path, IReadOnlyList<string> roots)
     {
         foreach (var r in roots)
@@ -36,7 +37,7 @@ public static class ProjectGrouping
         return slash < 0 ? "" : path[..slash];
     }
 
-    /// <summary>Header + files per group, groups by folder (repository root first), files keep their order.</summary>
+    /// <summary>Заголовок и файлы каждой группы; группы упорядочены по каталогу (сначала корень репозитория), порядок файлов сохраняется.</summary>
     public static List<object> Group(IReadOnlyList<FileChange> files, IReadOnlyList<string> roots)
     {
         var rows = new List<object>();

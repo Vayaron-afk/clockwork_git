@@ -1,6 +1,6 @@
 namespace ClockworkGit.Models;
 
-/// <summary>One row of the commit graph: lanes entering from above, lanes leaving below.</summary>
+/// <summary>Строка графа коммитов: линии входят сверху и продолжаются вниз.</summary>
 public sealed class GraphRow(string hash, int node, string?[] before, string?[] after, int[] down)
 {
     public string Hash { get; } = hash;
@@ -8,5 +8,6 @@ public sealed class GraphRow(string hash, int node, string?[] before, string?[] 
     public string?[] Before { get; } = before;
     public string?[] After { get; } = after;
     public int[] Down { get; } = down;
+    /// <summary>Показывает, представляет ли строка псевдокоммит рабочей копии.</summary>
     public bool IsWorkingTree => Hash == CommitInfo.WorkingTreeId;
 }

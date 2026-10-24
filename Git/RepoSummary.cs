@@ -1,8 +1,9 @@
 namespace ClockworkGit.Git;
 
-/// <summary>A cheap overview of a repository for the Repositories list (one git status call).</summary>
+/// <summary>Краткая сводка репозитория для списка репозиториев (один вызов git status).</summary>
 public sealed record RepoSummary(string? Branch, string? Upstream, int Changed, int Ahead, int Behind)
 {
+    /// <summary>Получает сведения о ветке и состоянии рабочей копии одним вызовом status в формате porcelain-v2; null, если сведения недоступны.</summary>
     public static async Task<RepoSummary?> Read(string path)
     {
         if (!Directory.Exists(path)) return null;

@@ -2,9 +2,10 @@ using Avalonia.Interactivity;
 
 namespace ClockworkGit.Views;
 
-// Reloading refs, status and the commit graph; status bar and state banner.
+// Refreshes repository data and updates the graph, status bar, and operation banner.
 public partial class MainWindow
 {
+    /// <summary>Обновляет ссылки, stash, состояние рабочей копии, данные графа и корневые каталоги проектов открытого репозитория.</summary>
     async Task RefreshAll()
     {
         var repo = _repo;
@@ -41,9 +42,10 @@ public partial class MainWindow
         await ReloadLog(selHash, selFile);
     }
 
+    /// <summary>Обрабатывает команду обновления и заново загружает данные репозитория.</summary>
     async void OnRefresh(object? sender, RoutedEventArgs e) => await RefreshAll();
 
-    /// <summary>Refs whose history the graph shows; first time: HEAD and its upstream.</summary>
+    /// <summary>Возвращает сохранённые ссылки графа; при первом обращении инициализирует их значениями HEAD и его upstream.</summary>
     List<string> ShownRefs()
     {
         var key = _repo!.Path;
@@ -58,6 +60,7 @@ public partial class MainWindow
         return list;
     }
 
+    /// <summary>Заново загружает коммиты графа для выбранных ссылок и восстанавливает выбранные коммит и файл.</summary>
     async Task ReloadLog(string? selectHash = null, string? selectFile = null)
     {
         var repo = _repo;
@@ -86,7 +89,7 @@ public partial class MainWindow
         ApplyFilter(selectHash);
     }
 
-    /// <summary>Filters the graph by text; lanes are hidden while filtering since rows are no longer adjacent.</summary>
+    /// <summary>Фильтрует граф по тексту; линии скрываются, поскольку после фильтрации строки уже не соседствуют.</summary>
     void ApplyFilter(string? selectHash)
     {
         var filter = FilterBox.Text?.Trim() ?? "";
@@ -97,6 +100,7 @@ public partial class MainWindow
         GraphList.SelectedItem = rows.FirstOrDefault(c => c.Hash == selectHash) ?? rows.FirstOrDefault();
     }
 
+    /// <summary>Обновляет баннер с описанием приостановленной операции Git в репозитории.</summary>
     void UpdateStateBanner()
     {
         var state = _repo?.GetState() ?? RepoState.Clean;
@@ -115,6 +119,7 @@ public partial class MainWindow
             : $"{what}. Continue or Abort.";
     }
 
+    /// <summary>Отображает текущую ветку или отсоединённый HEAD, состояние upstream и количество блокировок LFS.</summary>
     void UpdateStatusRight()
     {
         var head = _refs.FirstOrDefault(r => r.IsHead);

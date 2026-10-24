@@ -2,18 +2,21 @@ using Avalonia.Controls;
 
 namespace ClockworkGit.Services;
 
-/// <summary>Track/untrack/convert flows shared by the main window and the LFS window.</summary>
+/// <summary>Общие сценарии включения и отключения отслеживания LFS и преобразования файлов для главного окна и окна LFS.</summary>
 public static class LfsActions
 {
-    /// <summary>"*.png" for "a/b/c.png"; empty when the file has no extension.</summary>
+    /// <summary>Возвращает «*.png» для «a/b/c.png»; пустую строку, если у файла нет расширения.</summary>
     public static string ExtensionPattern(string relPath)
     {
         var ext = Path.GetExtension(relPath);
         return ext.Length > 0 ? "*" + ext : "";
     }
 
+    /// <summary>Для буквального пути добавляет префикс :(literal); для шаблона удаляет начальный «/» без преобразования семантики шаблона.</summary>
     static string Pathspec(string pattern, bool literal) => literal ? ":(literal)" + pattern : pattern.TrimStart('/');
 
+    /// <summary>Добавляет правило отслеживания Git LFS и при необходимости преобразует соответствующие отслеживаемые файлы.</summary>
+    /// <remarks>Добавляет весь корневой .gitattributes в индекс. Конвертация через add --renormalize включает текущие правки рабочей копии и не переписывает историю.</remarks>
     public static async Task<bool> Track(Window owner, GitRepo repo, string pattern, bool literal)
     {
         var choice = await Dialogs.Choose(owner, "Track in LFS",
@@ -29,6 +32,8 @@ public static class LfsActions
         return choice != 0 || await Run(owner, repo, "add", "--renormalize", "--", Pathspec(pattern, literal));
     }
 
+    /// <summary>Удаляет правило отслеживания Git LFS и при необходимости преобразует подходящие файлы в обычные объекты Git.</summary>
+    /// <remarks>Добавляет весь .gitattributes в индекс. При конвертации действуют оставшиеся правила атрибутов; старые объекты LFS сохраняются.</remarks>
     public static async Task<bool> Untrack(Window owner, GitRepo repo, string pattern)
     {
         var choice = await Dialogs.Choose(owner, "Untrack from LFS",
@@ -43,7 +48,7 @@ public static class LfsActions
         return choice != 0 || await Run(owner, repo, "add", "--renormalize", "--", Pathspec(pattern, false));
     }
 
-    /// <summary>Re-stages the given tracked files so the current LFS rules apply to them.</summary>
+    /// <summary>Повторно добавляет указанные отслеживаемые файлы в индекс, чтобы применить к ним текущие правила LFS.</summary>
     public static async Task<bool> ConvertExisting(Window owner, GitRepo repo, IReadOnlyCollection<string> paths)
     {
         var r = await repo.RunWithInput(string.Join('\0', paths) + '\0',
@@ -52,6 +57,7 @@ public static class LfsActions
         return r.Ok;
     }
 
+    /// <summary>Запускает команду Git и отображает ошибку в родительском окне при неудачном выполнении.</summary>
     static async Task<bool> Run(Window owner, GitRepo repo, params string[] args)
     {
         var r = await repo.Run(args);

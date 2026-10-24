@@ -4,8 +4,8 @@ using System.Text.RegularExpressions;
 namespace ClockworkGit.Unity;
 
 /// <summary>
-/// Unity asset GUID → asset path, read from the .meta files of the working tree.
-/// Lets diffs of .mat/.prefab/.unity/.asset show "ash_body_basecolor.png" instead of a bare GUID.
+/// GUID ресурса Unity → путь к ресурсу, полученный из файлов .meta рабочей копии.
+/// Дополняет строки diff файлов .mat/.prefab/.unity/.asset именами ресурсов, не изменяя исходный текст с GUID.
 /// </summary>
 public sealed partial class UnityGuidIndex
 {
@@ -16,18 +16,21 @@ public sealed partial class UnityGuidIndex
         ["0000000000000000d000000000000000"] = "Unity built-in (editor resources)",
     };
 
-    /// <summary>"guid: abc…" in YAML, "GUID:abc…" in .asmdef references.</summary>
+    /// <summary>Формат «guid: abc…» в YAML и «GUID:abc…» в ссылках .asmdef.</summary>
     [GeneratedRegex(@"(?i)guid:\s*([0-9a-f]{32})")]
     private static partial Regex GuidRef();
 
     readonly IReadOnlyDictionary<string, string> _paths;
 
+    /// <summary>Сохраняет переданный словарь путей; способ сравнения GUID определяется самим словарём.</summary>
     UnityGuidIndex(IReadOnlyDictionary<string, string> paths) => _paths = paths;
 
     public static UnityGuidIndex Empty { get; } = new(new Dictionary<string, string>());
 
+    /// <summary>Количество GUID ресурсов, проиндексированных в рабочей копии.</summary>
     public int Count => _paths.Count;
 
+    /// <summary>Создаёт словарь GUID, параллельно считывая отслеживаемые и неотслеживаемые файлы .meta.</summary>
     public static async Task<UnityGuidIndex> Build(GitRepo repo)
     {
         var r = await repo.Run("ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", "*.meta");
@@ -39,7 +42,7 @@ public sealed partial class UnityGuidIndex
         {
             try
             {
-                // The GUID is on the second line of every .meta file.
+                // Ищем guid: среди первых четырёх строк .meta; обычно он находится во второй.
                 foreach (var line in File.ReadLines(repo.FullPath(meta)).Take(4))
                 {
                     if (!line.StartsWith("guid: ")) continue;
@@ -55,13 +58,13 @@ public sealed partial class UnityGuidIndex
         return new UnityGuidIndex(new Dictionary<string, string>(paths, StringComparer.OrdinalIgnoreCase));
     }
 
-    /// <summary>Asset path for a GUID, a built-in label, or null when the asset is not in the working tree.</summary>
+    /// <summary>Путь ресурса для GUID, встроенная метка или null, если ресурса нет в рабочей копии.</summary>
     public string? Resolve(string guid) =>
         BuiltIn.TryGetValue(guid, out var builtIn) ? builtIn
         : _paths.TryGetValue(guid, out var path) ? path
         : null;
 
-    /// <summary>Fills the note fields of rows whose text references GUIDs.</summary>
+    /// <summary>При непустом индексе заполняет примечания контекстных и изменённых строк, содержащих GUID.</summary>
     public void Annotate(IEnumerable<DiffRow> rows)
     {
         if (Count == 0) return;
@@ -73,6 +76,7 @@ public sealed partial class UnityGuidIndex
         }
     }
 
+    /// <summary>Создаёт подпись имён ресурсов и подробную подсказку для ссылок GUID в строке diff.</summary>
     (string? Note, string? Tip) Describe(string text)
     {
         if (text.Length == 0) return (null, null);

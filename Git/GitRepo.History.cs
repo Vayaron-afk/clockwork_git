@@ -1,26 +1,30 @@
 namespace ClockworkGit.Git;
 
-// Branches, refs, log, status and commit contents.
+/// <summary>Получает ветки, ссылки, историю коммитов, stash и состояние рабочей копии репозитория.</summary>
 public sealed partial class GitRepo
 {
+    /// <summary>Возвращает имя текущей ветки или null, если HEAD отсоединён либо Git не может определить имя.</summary>
     public async Task<string?> CurrentBranch()
     {
         var r = await Run("symbolic-ref", "--short", "-q", "HEAD");
         return r.Ok ? r.Output.Trim() : null;
     }
 
+    /// <summary>Возвращает хеш HEAD или null при ошибке его определения, в том числе до первого коммита.</summary>
     public async Task<string?> HeadHash()
     {
         var r = await Run("rev-parse", "-q", "--verify", "HEAD");
         return r.Ok ? r.Output.Trim() : null;
     }
 
+    /// <summary>Возвращает имена настроенных удалённых репозиториев.</summary>
     public async Task<List<string>> Remotes()
     {
         var r = await Run("remote");
         return r.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
     }
 
+    /// <summary>Получает не более <paramref name="limit"/> коммитов, достижимых из выбранных ссылок, в порядке git log --date-order.</summary>
     public async Task<List<CommitInfo>> Log(IEnumerable<string> refs, int limit, IReadOnlyCollection<string> remotes)
     {
         var args = new List<string>
@@ -52,6 +56,7 @@ public sealed partial class GitRepo
         return list;
     }
 
+    /// <summary>Преобразует текст декораций Git в типизированные метки веток и тегов.</summary>
     static List<RefBadge> ParseDecorations(string decorations, IReadOnlyCollection<string> remotes)
     {
         var result = new List<RefBadge>();
@@ -67,6 +72,7 @@ public sealed partial class GitRepo
         return result;
     }
 
+    /// <summary>Получает локальные ветки, ветки отслеживания удалённых репозиториев и теги вместе со сведениями о вышестоящих ветках.</summary>
     public async Task<List<RefInfo>> Refs()
     {
         var r = await Run("for-each-ref",
@@ -82,6 +88,7 @@ public sealed partial class GitRepo
         return list;
     }
 
+    /// <summary>Возвращает stash репозитория в порядке отображения Git.</summary>
     public async Task<List<StashInfo>> Stashes()
     {
         var r = await Run("stash", "list", "--format=%gd%x1f%s");
@@ -92,6 +99,7 @@ public sealed partial class GitRepo
             .ToList();
     }
 
+    /// <summary>Получает из вывода status в формате porcelain отслеживаемые, неотслеживаемые и конфликтующие изменения рабочей копии.</summary>
     public async Task<List<FileChange>> Status()
     {
         var r = await Run("status", "--porcelain=v1", "-z", "-uall");
@@ -121,8 +129,9 @@ public sealed partial class GitRepo
     }
 
     /// <summary>
-    /// Newest commits of unreachable chains that only the reflog still knows (SmartGit's "Recyclable Commits"),
-    /// newest first. Git prunes them when the reflog expires (90 days by default).
+    /// Вершины цепочек коммитов, достижимых из reflog, но не из текущих ссылок (в SmartGit — «Recyclable Commits»).
+    /// Из не более 5000 коммитов в порядке --date-order выбирается до limit вершин.
+    /// Срок хранения зависит от очистки reflog и объектов Git; гарантии восстановления нет.
     /// </summary>
     public async Task<List<RecyclableCommit>> RecyclableCommits(int limit = 200)
     {
@@ -154,8 +163,8 @@ public sealed partial class GitRepo
     }
 
     /// <summary>
-    /// For each commit: the reflog entry right after it on the same ref, i.e. what moved the ref away from it.
-    /// Branch reflogs are preferred over HEAD's, whose entries are mostly checkouts.
+    /// Подбирает предполагаемую причину потери ссылки по более новой записи того же reflog; причина может отсутствовать.
+    /// Приоритет отдаётся reflog веток перед HEAD, который также содержит переключения веток.
     /// </summary>
     async Task<Dictionary<string, string>> LostReasons(HashSet<string> hashes)
     {
@@ -182,9 +191,10 @@ public sealed partial class GitRepo
         return result;
     }
 
-    /// <summary>What a commit is compared against: its first parent, or the empty tree for a root commit.</summary>
+    /// <summary>Версия, с которой сравнивается коммит: его первый родитель или пустое дерево для корневого коммита.</summary>
     public static string BaseOf(CommitInfo c) => c.Parents.Length > 0 ? c.Parents[0] : EmptyTree;
 
+    /// <summary>Возвращает отличия от первого родителя (для корневого коммита — от пустого дерева), с распознаванием переименований (-M).</summary>
     public async Task<List<FileChange>> CommitFiles(CommitInfo c)
     {
         var r = await Run("diff", "--name-status", "-z", "-M", "--no-ext-diff", BaseOf(c), c.Hash);
@@ -211,6 +221,7 @@ public sealed partial class GitRepo
         return list;
     }
 
+    /// <summary>Получает полное сообщение коммита указанной ревизии без завершающих пробельных символов.</summary>
     public async Task<string> CommitMessage(string rev)
     {
         var r = await Run("-c", "log.showSignature=false", "log", "-1", "--format=%B", rev);

@@ -1,6 +1,6 @@
 namespace ClockworkGit.Git;
 
-// Project roots (.NET, npm, Unity) for grouping changed files.
+/// <summary>Находит корневые каталоги проектов в репозитории для группировки изменённых файлов в интерфейсе.</summary>
 public sealed partial class GitRepo
 {
     static readonly string[] ProjectMarkers =
@@ -12,7 +12,7 @@ public sealed partial class GitRepo
         ":(glob)**/ProjectSettings/ProjectVersion.txt",
     ];
 
-    /// <summary>Outermost tracked project folders, e.g. <c>Site1</c> rather than <c>Site1/ClientApp</c>.</summary>
+    /// <summary>Самые внешние отслеживаемые каталоги проектов, например <c>Site1</c>, а не <c>Site1/ClientApp</c>.</summary>
     public async Task<List<string>> ProjectRoots()
     {
         var r = await Run(["ls-files", "-z", "--", .. ProjectMarkers]);

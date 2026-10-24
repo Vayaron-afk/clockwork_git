@@ -6,15 +6,17 @@ namespace ClockworkGit.Views;
 // Commit details, the Files list (sorting, LFS filter) and the bottom diff panel.
 public partial class MainWindow
 {
-    /// <summary>Selected commits, newest first (graph order, not click order).</summary>
+    /// <summary>Возвращает выбранные коммиты в том же порядке от новых к старым, что и на графе.</summary>
     List<CommitInfo> SelectedCommits()
     {
         var selected = GraphList.SelectedItems?.OfType<CommitInfo>().ToHashSet() ?? new HashSet<CommitInfo>();
         return _allCommits.Where(selected.Contains).ToList();
     }
 
+    /// <summary>Возвращает выбранные коммиты графа, исключая псевдокоммит рабочей копии.</summary>
     List<CommitInfo> SelectedRealCommits() => SelectedCommits().Where(c => !c.IsWorkingTree).ToList();
 
+    /// <summary>Загружает метаданные коммитов, изменённые файлы, индикаторы LFS и предупреждения для выбранных элементов графа.</summary>
     async void LoadDetails()
     {
         var gen = ++_detailsGen;
@@ -100,6 +102,7 @@ public partial class MainWindow
 
     // ───────────── Files list: sort and filter ─────────────
 
+    /// <summary>Сортирует файлы по сохранённому столбцу и направлению, используя путь как стабильный критерий при равенстве.</summary>
     List<FileChange> SortFiles(IEnumerable<FileChange> files)
     {
         Func<FileChange, string> primary = _settings.FilesSort == FileSortColumn.Name ? f => f.Name : f => f.RelPath;
@@ -110,6 +113,7 @@ public partial class MainWindow
         return ordered.ThenBy(f => f.RelPath, cmp).ToList();
     }
 
+    /// <summary>Обновляет заголовки столбцов сортировки, чтобы отобразить выбранное направление.</summary>
     void UpdateSortHeaders()
     {
         var arrow = _settings.FilesSortDescending ? " ▼" : " ▲";
@@ -117,6 +121,7 @@ public partial class MainWindow
         SortByPath.Content = "Path" + (_settings.FilesSort == FileSortColumn.Path ? arrow : "");
     }
 
+    /// <summary>Меняет столбец сортировки файлов или переключает направление и сохраняет выбранные параметры.</summary>
     void OnSortFiles(object? sender, RoutedEventArgs e)
     {
         if (sender is not Button { Tag: string tag } || !Enum.TryParse<FileSortColumn>(tag, out var column)) return;
@@ -131,13 +136,14 @@ public partial class MainWindow
         RebindFiles();
     }
 
-    /// <summary>Sorted and filtered files; grouped by project, with a <see cref="FileGroup"/> header before each group.</summary>
+    /// <summary>Применяет текущий фильтр LFS и сортировку, при необходимости группируя файлы по проектам.</summary>
     List<object> ShownFiles()
     {
         var files = SortFiles(LfsOnly.IsChecked == true ? _ownerFiles.Where(f => f.IsLfs) : _ownerFiles);
         return ByProject.IsChecked == true ? ProjectGrouping.Group(files, _projectRoots) : files.Cast<object>().ToList();
     }
 
+    /// <summary>Сохраняет настройку группировки по проектам для репозитория и обновляет привязки списка файлов.</summary>
     void OnByProjectChanged()
     {
         if (_repo == null) return;
@@ -152,7 +158,7 @@ public partial class MainWindow
         RebindFiles();
     }
 
-    /// <summary>A clicked group header stands for its files: they replace it in the selection.</summary>
+    /// <summary>Выбирает все файлы, относящиеся к отмеченным заголовкам групп проектов.</summary>
     void SelectGroups(List<FileGroup> groups)
     {
         _resortingFiles = true;
@@ -170,7 +176,7 @@ public partial class MainWindow
         ShowDiff(SingleSelectedFile());
     }
 
-    /// <summary>Re-applies sort and filter, keeping the selection (and its diff) when it is still visible.</summary>
+    /// <summary>Перестраивает видимый список файлов, сохраняя выбор тех элементов, которые остались видимыми.</summary>
     void RebindFiles()
     {
         if (FilesList.ItemsSource == null) return;
@@ -196,6 +202,7 @@ public partial class MainWindow
 
     // ───────────── Diff panel ─────────────
 
+    /// <summary>Показывает текстовый diff или сравнение изображений, отбрасывая устаревшие результаты загрузки.</summary>
     async void ShowDiff(FileChange? f)
     {
         var gen = ++_diffGen;
@@ -235,16 +242,20 @@ public partial class MainWindow
         DiffList.ItemsSource = result.Rows;
     }
 
+    /// <summary>Открывает окно сравнения для единственного выбранного файла.</summary>
     void OnOpenCompare(object? sender, RoutedEventArgs e) => OpenCompare(SingleSelectedFile());
 
+    /// <summary>Открывает окно сравнения файла целиком с соответствующей ревизией.</summary>
     void OpenCompare(FileChange? f)
     {
         if (f == null || _repo == null || _filesOwner == null) return;
         new FileCompareWindow(_repo, _filesOwner, f, _headHash != null, SvgAsText.IsChecked == true).Show(this);
     }
 
+    /// <summary>Обрабатывает команду открытия окна управления LFS репозитория.</summary>
     void OnOpenLfs(object? sender, RoutedEventArgs e) => OpenLfs();
 
+    /// <summary>Открывает немодальное окно LFS с обновлением главного окна после действий, вызывающих обратный вызов.</summary>
     void OpenLfs()
     {
         if (_repo == null) return;

@@ -1,7 +1,8 @@
 namespace ClockworkGit.Models;
 
 /// <summary>
-/// A commit no ref points to any more but the reflog still keeps (after reset, amend, rebase or a deleted branch).
-/// <see cref="Reason"/> is the reflog action that left it behind, e.g. "reset: moving to HEAD~1".
+/// Вершина цепочки коммитов, недостижимой из текущих ссылок, но достижимой из reflog
+/// (например, после reset, amend или rebase). <see cref="Reason"/> содержит предполагаемое действие reflog,
+/// оставившее коммит без ссылки, или пустую строку, если причину установить не удалось.
 /// </summary>
 public sealed record RecyclableCommit(CommitInfo Commit, string Reason);

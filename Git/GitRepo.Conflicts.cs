@@ -2,9 +2,10 @@ using System.Text;
 
 namespace ClockworkGit.Git;
 
-// Conflicted files: index stages and a fresh three-way merge of them.
+/// <summary>Загружает стадии конфликта, формирует предварительный результат слияния и сохраняет разрешённое содержимое.</summary>
 public sealed partial class GitRepo
 {
+    /// <summary>Загружает объекты общего предка, нашей и их версий из неслитых стадий индекса для указанного пути.</summary>
     public async Task<ConflictSides> LoadConflict(string path)
     {
         var b = Blob(":1", path);
@@ -15,8 +16,9 @@ public sealed partial class GitRepo
     }
 
     /// <summary>
-    /// Re-runs the merge of the three stages with diff3 markers, so clean changes are merged and each conflict
-    /// also shows the ancestor. Null when git cannot merge (e.g. binary input).
+    /// Выполняет трёхстороннее слияние diff3 для переданных стадий индекса и возвращает итоговый текст:
+    /// бесконфликтные изменения объединяются, а в конфликты включается общий предок. Отсутствующая стадия заменяется пустым файлом.
+    /// null возвращается при отрицательном коде завершения; остальные коды приводят к возврату stdout.
     /// </summary>
     public async Task<string?> MergeFile(ConflictSides sides)
     {
@@ -24,6 +26,7 @@ public sealed partial class GitRepo
         Directory.CreateDirectory(dir);
         try
         {
+            // Writes a merge stage to a temporary file for git merge-file.
             string Write(string name, byte[]? bytes)
             {
                 var file = System.IO.Path.Combine(dir, name);
@@ -37,7 +40,8 @@ public sealed partial class GitRepo
             var r = await Run("merge-file", "-p", "--diff3",
                 "-L", MergeFileParser.OursLabel, "-L", MergeFileParser.BaseLabel, "-L", MergeFileParser.TheirsLabel,
                 ours, bas, theirs);
-            // The exit code is the number of conflicts; negative means failure.
+            // 0 — чистое слияние, 1–127 — конфликты. Проверка ниже считает ошибкой только отрицательный код.
+            // Некоторые ошибки процесса возвращаются как 255 или другой положительный код и здесь не распознаются.
             return r.ExitCode >= 0 ? r.Output : null;
         }
         finally
@@ -46,7 +50,8 @@ public sealed partial class GitRepo
         }
     }
 
-    /// <summary>Writes the resolved text with the working file's line endings and BOM, optionally staging it.</summary>
+    /// <summary>Записывает текст в UTF-8 с заданным BOM и преобразованием LF в CRLF при useCrlf; при stage добавляет файл в индекс.</summary>
+    /// <remarks>При useCrlf=false окончания строк входного текста не меняются. Ошибка git add выбрасывается как InvalidOperationException.</remarks>
     public async Task SaveResolution(string path, string text, bool useCrlf, bool bom, bool stage)
     {
         if (useCrlf) text = text.Replace("\r\n", "\n").Replace("\n", "\r\n");

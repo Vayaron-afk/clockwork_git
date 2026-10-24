@@ -6,8 +6,8 @@ using Avalonia.Interactivity;
 namespace ClockworkGit.Views;
 
 /// <summary>
-/// The SmartGit-like main window. Code-behind is split by area:
-/// Repositories, Refresh (log/graph/status), Branches, Details (files and diff), Operations, ContextMenus.
+/// Главное окно в стиле SmartGit. Код разделён по областям:
+/// Repositories, AutoFetch, Refresh, Branches, Details, Staging, Operations, Rebase, Conflicts, Locks и ContextMenus.
 /// </summary>
 public partial class MainWindow : Window
 {
@@ -23,28 +23,29 @@ public partial class MainWindow : Window
     List<RefInfo> _refs = new();
     List<string> _remotes = new();
     List<RecyclableCommit> _recyclable = new();
-    /// <summary>Commit to select once the graph reloads after a branch-tree checkbox changed.</summary>
+    /// <summary>Коммит, который нужно выбрать после перезагрузки графа при изменении флажка в дереве веток.</summary>
     string? _selectAfterReload;
     string? _currentBranch, _headHash;
-    /// <summary>File to reselect after a refresh rebuilds the Files list.</summary>
+    /// <summary>Файл, который нужно выбрать повторно после обновления списка файлов.</summary>
     string? _pendingFile;
-    /// <summary>Message of the commit removed by Undo Last Commit, offered again in the commit dialog.</summary>
+    /// <summary>Сообщение удалённого командой «Отменить последний коммит» коммита, предлагаемое повторно в диалоге создания коммита.</summary>
     string? _undoneMessage;
-    /// <summary>The commit (or working tree) whose files are listed.</summary>
+    /// <summary>Коммит или рабочая копия, файлы которых отображаются.</summary>
     CommitInfo? _filesOwner;
     List<FileChange> _ownerFiles = new();
-    /// <summary>Outermost project folders of the repository, for grouping the Files list.</summary>
+    /// <summary>Самые внешние каталоги проектов репозитория для группировки списка файлов.</summary>
     List<string> _projectRoots = new();
-    /// <summary>Diff shown in the bottom panel; the raw text is what partial staging builds patches from.</summary>
+    /// <summary>Diff в нижней панели; его исходный текст используется для формирования патчей при частичном добавлении в индекс.</summary>
     DiffResult? _shownDiff;
     WorkTreeDiffMode _diffMode = WorkTreeDiffMode.Unstaged;
-    /// <summary>File the diff mode was chosen for; another file gets a fresh automatic choice.</summary>
+    /// <summary>Файл, для которого выбран режим diff; для другого файла режим выбирается заново автоматически.</summary>
     string? _diffModeFile;
     bool _busy, _resortingFiles, _updatingDiffMode;
     // Generation counters drop results of async loads that were superseded by a newer one.
     int _refreshGen, _logGen, _detailsGen, _diffGen;
     DateTime _lastRefresh;
 
+    /// <summary>Настраивает привязки, восстанавливает сохранённые репозитории и подключает обработчики событий окна и списков.</summary>
     public MainWindow()
     {
         InitializeComponent();
@@ -115,18 +116,23 @@ public partial class MainWindow : Window
         };
     }
 
+    /// <summary>Сравнивает полные пути без учёта регистра после удаления завершающих разделителей.</summary>
     static bool SamePath(string? a, string? b) =>
         a != null && b != null && string.Equals(Path.GetFullPath(a).TrimEnd('\\'), Path.GetFullPath(b).TrimEnd('\\'), StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>Возвращает выбранный файл, только если выбрана ровно одна строка.</summary>
     FileChange? SingleSelectedFile() => FilesList.SelectedItems?.Count == 1 ? FilesList.SelectedItem as FileChange : null;
 
+    /// <summary>Обновляет сообщение в основной строке состояния.</summary>
     void SetStatus(string text) => StatusText.Text = text;
 
+    /// <summary>Копирует обычный текст в системный буфер обмена, если платформа предоставляет такую возможность.</summary>
     async Task CopyText(string text)
     {
         if (Clipboard != null) await Clipboard.SetTextAsync(text);
     }
 
+    /// <summary>Обрабатывает сочетания клавиш окна для обновления, создания коммита и частичного добавления изменений в индекс.</summary>
     async void OnKey(object? sender, KeyEventArgs e)
     {
         if (e.Key == Key.F5)

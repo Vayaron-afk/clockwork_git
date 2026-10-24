@@ -8,8 +8,8 @@ namespace ClockworkGit.Views;
 public partial class MainWindow
 {
     /// <summary>
-    /// Keeps the chosen mode while the same file stays selected, otherwise picks the side that has changes.
-    /// Also updates the mode switch and the action buttons.
+    /// Сохраняет выбранный режим, пока выбран тот же файл; для другого файла выбирает сторону с изменениями.
+    /// Также обновляет переключатель режима и кнопки действий.
     /// </summary>
     WorkTreeDiffMode PickDiffMode(FileChange f)
     {
@@ -46,6 +46,7 @@ public partial class MainWindow
         return _diffMode;
     }
 
+    /// <summary>Переключает сравнение выбранного файла рабочей копии между staged, unstaged и всеми изменениями.</summary>
     void OnDiffModeChosen(RadioButton button, WorkTreeDiffMode mode)
     {
         if (_updatingDiffMode || button.IsChecked != true) return;
@@ -53,13 +54,17 @@ public partial class MainWindow
         ShowDiff(SingleSelectedFile());
     }
 
+    /// <summary>Добавляет в индекс или удаляет из него выбранные блоки изменений целиком.</summary>
     async void OnBlockAction(object? sender, RoutedEventArgs e) => await ApplySelection(wholeBlocks: true, discard: false);
+    /// <summary>Добавляет в индекс или удаляет из него выбранные изменённые строки diff.</summary>
     async void OnLinesAction(object? sender, RoutedEventArgs e) => await ApplySelection(wholeBlocks: false, discard: false);
+    /// <summary>Запрашивает подтверждение перед отменой выбранных изменений строк в рабочей копии.</summary>
     async void OnDiscardLines(object? sender, RoutedEventArgs e) => await ApplySelection(wholeBlocks: false, discard: true);
 
     /// <summary>
-    /// Turns the selected diff rows into a patch and applies it: to the index (stage), reversed to the index
-    /// (unstage, in Staged mode), or reversed to the working tree (discard, in Unstaged mode).
+    /// Преобразует выбранные строки diff в патч и применяет его к индексу (добавление),
+    /// к индексу в обратном направлении (удаление из индекса в режиме Staged) либо к рабочей копии
+    /// в обратном направлении (отмена в режиме Unstaged).
     /// </summary>
     async Task ApplySelection(bool wholeBlocks, bool discard)
     {
@@ -99,6 +104,7 @@ public partial class MainWindow
         });
     }
 
+    /// <summary>Создаёт контекстные действия diff для частичного добавления в индекс, удаления из индекса, отмены и копирования.</summary>
     void OnDiffContext(object? sender, ContextRequestedEventArgs e)
     {
         if (_shownDiff == null) return;
@@ -124,6 +130,7 @@ public partial class MainWindow
         e.Handled = true;
     }
 
+    /// <summary>Копирует выбранные строки diff в буфер обмена как обычный текст.</summary>
     Task CopySelectedDiffLines()
     {
         var rows = _shownDiff?.Rows;

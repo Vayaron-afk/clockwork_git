@@ -2,24 +2,26 @@ using System.Text.RegularExpressions;
 
 namespace ClockworkGit.Git;
 
-/// <summary>Turns git's unified diff into side-by-side <see cref="DiffRow"/>s.</summary>
+/// <summary>Преобразует unified diff Git в строки <see cref="DiffRow"/>, расположенные бок о бок.</summary>
 public static partial class DiffParser
 {
     public const int DefaultMaxRows = 30000;
     public const int FullFileMaxRows = 300000;
 
-    /// <summary>"@@ -old[,n] +new[,n] @@ section": groups 1 = old start, 2 = new start, 3 = section text.</summary>
+    /// <summary>Формат «@@ -old[,n] +new[,n] @@ section»: группа 1 — начало старой версии, 2 — новой, 3 — текст секции.</summary>
     [GeneratedRegex(@"^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@(.*)$")]
     internal static partial Regex HunkHeader();
 
+    /// <summary>Удаляет символы возврата каретки в окончаниях строк и раскрывает табуляцию для выравнивания diff.</summary>
     static string Clean(string s) => s.TrimEnd('\r').Replace("\t", "    ");
 
     /// <summary>
-    /// Turns a unified diff into side-by-side rows; removed/added blocks are paired line by line and the
-    /// differing middle of each pair is highlighted. <paramref name="fullFile"/> drops hunk header rows
-    /// (used with a context large enough to cover the whole file).
-    /// Rows remember which raw diff lines they came from, so a selection can be turned into a patch.
+    /// Преобразует unified diff в строки, расположенные бок о бок: блоки удалений и добавлений сопоставляются
+    /// построчно, а различающиеся части выделяются. При значении <paramref name="fullFile"/> заголовки блоков
+    /// опускаются (режим используется, когда контекст охватывает весь файл).
+    /// Строки сохраняют индексы исходных строк diff, чтобы выбранные строки можно было преобразовать в патч.
     /// </summary>
+    /// <remarks>Предел maxRows приблизительный: накопленный блок добавляется целиком и может превысить его. Пустой и двоичный diff возвращаются как информационная строка.</remarks>
     public static List<DiffRow> SideBySide(string diff, bool fullFile = false, int maxRows = DefaultMaxRows)
     {
         var rows = new List<DiffRow>();
@@ -31,6 +33,7 @@ public static partial class DiffParser
         int ln = 0, rn = 0;
         var inHunk = false;
 
+        // Aligns the pending deletion and addition runs and adds them as changed rows.
         void Flush()
         {
             var n = Math.Max(dels.Count, adds.Count);
@@ -95,7 +98,7 @@ public static partial class DiffParser
         return rows;
     }
 
-    /// <summary>Common prefix/suffix of a changed pair; the middle parts are what actually changed.</summary>
+    /// <summary>Находит различающиеся фрагменты двух изменённых строк после удаления общего префикса и суффикса.</summary>
     static (int LStart, int LLen, int RStart, int RLen) InlineChange(string l, string r)
     {
         var max = Math.Min(l.Length, r.Length);
@@ -109,6 +112,7 @@ public static partial class DiffParser
         return (p, ll, p, rl);
     }
 
+    /// <summary>Создаёт строки diff для текстового файла, содержимое которого целиком добавлено.</summary>
     public static List<DiffRow> AllAdded(string text, int maxRows = DefaultMaxRows)
     {
         var rows = new List<DiffRow>();
@@ -125,7 +129,8 @@ public static partial class DiffParser
         return rows;
     }
 
-    /// <summary>A file that git does not know yet: every line is an addition.</summary>
+    /// <summary>Читает файл на диске как UTF-8 и показывает строки добавленными; для каталогов, отсутствующих, крупных или двоичных файлов возвращает сообщение.</summary>
+    /// <remarks>Файлы больше 8 МиБ не читаются; двоичность определяется нулевым байтом в первых 8000 байтах.</remarks>
     public static List<DiffRow> FromNewFile(string path, int maxRows = DefaultMaxRows)
     {
         if (Directory.Exists(path)) return [DiffRow.Message("Directory")];

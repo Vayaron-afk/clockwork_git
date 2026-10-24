@@ -5,7 +5,7 @@ using Avalonia.Media;
 
 namespace ClockworkGit.Controls;
 
-/// <summary>A line of diff text with one highlighted range (the changed part of a changed line).</summary>
+/// <summary>Строка diff с одним выделенным фрагментом — изменённой частью строки.</summary>
 public sealed class DiffText : TextBlock
 {
     public static readonly StyledProperty<string?> ValueProperty =
@@ -17,6 +17,7 @@ public sealed class DiffText : TextBlock
     public static readonly StyledProperty<IBrush?> HiBrushProperty =
         AvaloniaProperty.Register<DiffText, IBrush?>(nameof(HiBrush));
 
+    /// <summary>Применяет стандартные стили темы TextBlock к этому производному элементу управления.</summary>
     protected override Type StyleKeyOverride => typeof(TextBlock);
 
     public string? Value { get => GetValue(ValueProperty); set => SetValue(ValueProperty, value); }
@@ -24,6 +25,7 @@ public sealed class DiffText : TextBlock
     public int HiLength { get => GetValue(HiLengthProperty); set => SetValue(HiLengthProperty, value); }
     public IBrush? HiBrush { get => GetValue(HiBrushProperty); set => SetValue(HiBrushProperty, value); }
 
+    /// <summary>Перестраивает встроенную разметку текста при изменении исходного текста или параметров выделения.</summary>
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
@@ -32,6 +34,7 @@ public sealed class DiffText : TextBlock
             Rebuild();
     }
 
+    /// <summary>Повторно создаёт встроенные элементы текста с заданным фоном изменённого фрагмента.</summary>
     void Rebuild()
     {
         var text = Value ?? "";

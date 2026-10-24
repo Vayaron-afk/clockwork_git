@@ -2,7 +2,7 @@ using System.Text.Json;
 
 namespace ClockworkGit.Services;
 
-/// <summary>User settings in %APPDATA%\ClockworkGit\settings.json.</summary>
+/// <summary>Пользовательские настройки в %APPDATA%\ClockworkGit\settings.json.</summary>
 public sealed class Settings
 {
     static readonly string FilePath = Path.Combine(
@@ -12,15 +12,16 @@ public sealed class Settings
 
     public List<string> Repositories { get; set; } = new();
     public string? LastRepository { get; set; }
-    /// <summary>Per repository: refs whose history is shown in the graph.</summary>
+    /// <summary>Для каждого репозитория: ссылки, история которых отображается на графе.</summary>
     public Dictionary<string, List<string>> ShownRefs { get; set; } = new();
     public FileSortColumn FilesSort { get; set; } = FileSortColumn.Path;
     public bool FilesSortDescending { get; set; }
-    /// <summary>Repositories whose Files list is grouped by project (sites, services).</summary>
+    /// <summary>Репозитории, в которых список файлов сгруппирован по проектам (сайты, службы).</summary>
     public List<string> FilesByProject { get; set; } = new();
-    /// <summary>Background fetch interval for all repositories; 0 turns it off.</summary>
+    /// <summary>Интервал фоновых попыток fetch в минутах; значение 0 отключает функцию.</summary>
     public int AutoFetchMinutes { get; set; } = 10;
 
+    /// <summary>Загружает настройки из профиля пользователя и возвращает значения по умолчанию, если файл отсутствует или некорректен.</summary>
     public static Settings Load()
     {
         try
@@ -35,6 +36,7 @@ public sealed class Settings
         return new Settings();
     }
 
+    /// <summary>При необходимости создаёт каталог настроек и записывает текущие параметры в форматированном JSON.</summary>
     public void Save()
     {
         Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);

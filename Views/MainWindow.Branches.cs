@@ -8,11 +8,13 @@ namespace ClockworkGit.Views;
 // Branches tree: building it, showing refs in the graph, branch/tag/stash actions.
 public partial class MainWindow
 {
+    /// <summary>Формирует дерево веток по ссылкам, stash и восстановимым коммитам, восстанавливая сохранённое состояние дерева.</summary>
     void BuildBranchTree(List<StashInfo> stashes)
     {
         var shown = ShownRefs();
         var roots = new List<BranchNode>();
 
+        // Creates a tree node and restores its saved expansion and graph-selection state.
         BranchNode Node(string key, NodeKind kind, string title, string detail = "", string? fullRef = null,
             string? shortName = null, string? remote = null, bool current = false)
         {
@@ -27,6 +29,7 @@ public partial class MainWindow
         }
 
         // "feature/x/y" becomes folders feature/ → x/ → leaf y.
+        // Adds missing folder nodes before appending the branch or tag leaf.
         void AddPath(BranchNode parent, string rel, Func<string, BranchNode> makeLeaf)
         {
             var parts = rel.Split('/');
@@ -105,6 +108,7 @@ public partial class MainWindow
         BranchTree.ItemsSource = roots;
     }
 
+    /// <summary>Сохраняет изменения раскрытия дерева веток и выбора ссылок графа.</summary>
     void OnBranchNodeChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (sender is not BranchNode n || _repo == null) return;
@@ -125,6 +129,7 @@ public partial class MainWindow
         }
     }
 
+    /// <summary>Переключается на ветку при двойном щелчке или отображает восстановимый коммит на графе.</summary>
     async void OnBranchDoubleTapped(object? sender, TappedEventArgs e)
     {
         if ((e.Source as Control)?.DataContext is not BranchNode n) return;
@@ -132,7 +137,7 @@ public partial class MainWindow
         else if (n.Kind == NodeKind.Recyclable) await ShowRecyclableInGraph(n);
     }
 
-    /// <summary>Adds the commit's chain to the graph (if needed) and selects it.</summary>
+    /// <summary>Добавляет историю восстановимого коммита в граф и выбирает этот коммит.</summary>
     async Task ShowRecyclableInGraph(BranchNode n)
     {
         if (n.IsChecked)
@@ -144,8 +149,10 @@ public partial class MainWindow
         n.IsChecked = true; // reloads the log via OnBranchNodeChanged
     }
 
+    /// <summary>Находит восстановимый коммит, представленный узлом дерева веток.</summary>
     RecyclableCommit? RecyclableOf(BranchNode n) => _recyclable.FirstOrDefault(r => r.Commit.Hash == n.ShortName);
 
+    /// <summary>Создаёт контекстные действия для выбранной ветки, тега, stash или восстановимого коммита.</summary>
     void OnBranchContext(object? sender, ContextRequestedEventArgs e)
     {
         if ((e.Source as Control)?.DataContext is not BranchNode n || _repo == null) return;
@@ -227,7 +234,7 @@ public partial class MainWindow
         e.Handled = true;
     }
 
-    /// <summary>Local branch: switch; remote branch: switch to its local twin, creating a tracking branch if needed.</summary>
+    /// <summary>Переключается на локальную ветку или создаёт отслеживающую ветку из узла удалённой ветки.</summary>
     async Task CheckoutBranch(BranchNode n)
     {
         if (n.Kind == NodeKind.Local)
@@ -242,12 +249,14 @@ public partial class MainWindow
             await Do(() => Exec("switch", "--track", n.ShortName!));
     }
 
+    /// <summary>Запрашивает подтверждение и выполняет rebase текущей ветки на выбранную цель.</summary>
     async Task RebaseOnto(string target)
     {
         if (await Dialogs.Confirm(this, "Rebase", $"Rebase '{_currentBranch}' onto '{target}'? Commits of '{_currentBranch}' will be rewritten.", "Rebase"))
             await Do(() => Exec("rebase", target));
     }
 
+    /// <summary>Запрашивает новое имя и переименовывает локальную ветку.</summary>
     async Task RenameBranch(string name)
     {
         var newName = await Dialogs.Prompt(this, "Rename branch", $"New name for '{name}':", name);
@@ -255,6 +264,7 @@ public partial class MainWindow
             await Do(() => Exec("branch", "-m", name, newName.Trim()));
     }
 
+    /// <summary>Удаляет локальную ветку; принудительное удаление предлагается, только если Git сообщает о неслитых коммитах.</summary>
     async Task DeleteBranch(string name)
     {
         if (!await Dialogs.Confirm(this, "Delete branch", $"Delete local branch '{name}'?", "Delete")) return;

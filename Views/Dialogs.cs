@@ -7,9 +7,10 @@ using Avalonia.Media;
 
 namespace ClockworkGit.Views;
 
-/// <summary>Small modal dialogs built in code: message, confirm, choice, prompt, commit.</summary>
+/// <summary>Небольшие модальные диалоги, создаваемые в коде: сообщение, подтверждение, выбор, ввод и коммит.</summary>
 public static class Dialogs
 {
+    /// <summary>Создаёт окно фиксированной ширины с высотой по содержимому и размещением по центру владельца; показ выполняет вызывающий код.</summary>
     static Window MakeWindow(string title, Control content, double width = 480) => new()
     {
         Title = title,
@@ -22,6 +23,7 @@ public static class Dialogs
         Content = new Border { Padding = new Thickness(16), Child = content },
     };
 
+    /// <summary>Размещает кнопки диалога справа в горизонтальном ряду.</summary>
     static StackPanel ButtonRow(params Button[] buttons)
     {
         var row = new StackPanel
@@ -35,9 +37,11 @@ public static class Dialogs
         return row;
     }
 
+    /// <summary>Создаёт кнопку диалога стандартного размера с необязательным поведением по умолчанию или отмены.</summary>
     static Button Btn(string text, bool isDefault = false, bool isCancel = false) =>
         new() { Content = text, IsDefault = isDefault, IsCancel = isCancel, MinWidth = 80, HorizontalContentAlignment = HorizontalAlignment.Center };
 
+    /// <summary>Показывает модальное сообщение с выделяемым и автоматически перенесённым текстом.</summary>
     public static async Task ShowMessage(Window owner, string title, string text)
     {
         var ok = Btn("OK", isDefault: true, isCancel: true);
@@ -58,6 +62,7 @@ public static class Dialogs
         await w.ShowDialog(owner);
     }
 
+    /// <summary>Запрашивает подтверждение и возвращает true, только если нажата утвердительная кнопка.</summary>
     public static async Task<bool> Confirm(Window owner, string title, string text, string okText = "OK")
     {
         var ok = Btn(okText, isDefault: true);
@@ -72,7 +77,7 @@ public static class Dialogs
         return await w.ShowDialog<bool?>(owner) == true;
     }
 
-    /// <summary>Returns the index of the pressed button; the last button and closing the window mean cancel (-1).</summary>
+    /// <summary>Возвращает индекс нажатой кнопки; последняя кнопка и закрытие окна обозначают отмену (-1).</summary>
     public static async Task<int> Choose(Window owner, string title, string text, params string[] buttons)
     {
         var btns = buttons.Select((b, i) => Btn(b, isDefault: i == 0, isCancel: i == buttons.Length - 1)).ToArray();
@@ -89,6 +94,7 @@ public static class Dialogs
         return await w.ShowDialog<int?>(owner) ?? -1;
     }
 
+    /// <summary>Запрашивает значение в одну строку и возвращает null при отмене.</summary>
     public static async Task<string?> Prompt(Window owner, string title, string label, string initial = "")
     {
         var box = new TextBox { Text = initial };
@@ -106,7 +112,13 @@ public static class Dialogs
         return await w.ShowDialog<string?>(owner);
     }
 
-    /// <param name="warningsFor">Pre-commit check results for "stage all" = true / false.</param>
+    /// <summary>Показывает параметры и предупреждения коммита; возвращает запрос или null при отмене, не изменяя репозиторий.</summary>
+    /// <param name="owner">Владелец модального диалога.</param>
+    /// <param name="staged">Количество файлов с изменениями в индексе.</param>
+    /// <param name="total">Общее количество изменённых файлов.</param>
+    /// <param name="initialMessage">Начальный текст сообщения, например после Undo Last Commit.</param>
+    /// <param name="lastMessage">Загрузка сообщения HEAD при выборе Amend с пустым сообщением.</param>
+    /// <param name="warningsFor">Возвращает подготовленные предупреждения: true — для всех изменений, false — для уже добавленных в индекс.</param>
     public static async Task<CommitRequest?> Commit(
         Window owner, int staged, int total, string? initialMessage, Func<Task<string>> lastMessage,
         Func<bool, IReadOnlyList<CommitWarning>> warningsFor)
@@ -148,6 +160,7 @@ public static class Dialogs
         };
         IReadOnlyList<CommitWarning> warnings = [];
 
+        // Выбирает подготовленный набор предупреждений при переключении Stage all; проверки повторно не запускаются.
         void ShowWarnings()
         {
             warnings = warningsFor(stageAll.IsVisible && stageAll.IsChecked == true);
@@ -173,6 +186,7 @@ public static class Dialogs
                 message.Text = await lastMessage();
         };
 
+        // Validates the message and closes the dialog with the selected commit options.
         void Finish(bool push)
         {
             var text = message.Text?.Trim() ?? "";

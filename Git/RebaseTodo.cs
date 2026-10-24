@@ -3,13 +3,14 @@ using System.Text;
 namespace ClockworkGit.Git;
 
 /// <summary>
-/// Turns a rebase plan into a git-rebase-todo that runs without an editor:
-/// reword and squash are expressed as <c>fixup</c> plus <c>exec git commit --amend -F file</c>,
-/// so the final message of each group is exactly what the user typed.
+/// Преобразует план rebase в файл git-rebase-todo, который выполняется без редактора:
+/// reword выполняется через <c>pick</c>, squash и fixup — через <c>fixup</c>.
+/// Изменённое сообщение группы задаётся последующим <c>exec git commit --amend --cleanup=strip -F file</c>;
+/// сообщения обрезаются по краям и объединяются пустой строкой, после чего Git применяет cleanup=strip.
 /// </summary>
 public static class RebaseTodo
 {
-    /// <summary>Validates the plan; null when it is fine, otherwise the reason it cannot run.</summary>
+    /// <summary>Проверяет, что остаётся хотя бы один коммит и первый сохраняемый шаг не Squash/Fixup; возвращает причину нарушения или null.</summary>
     public static string? Validate(IReadOnlyList<RebaseStep> oldestFirst)
     {
         var kept = oldestFirst.Where(s => s.Action != RebaseAction.Drop).ToList();
@@ -19,12 +20,12 @@ public static class RebaseTodo
         return null;
     }
 
-    /// <summary>True when the plan would recreate the same history.</summary>
+    /// <summary>Возвращает true, если все шаги — Pick с исходными сообщениями, а порядок хешей не изменился.</summary>
     public static bool IsNoOp(IReadOnlyList<RebaseStep> oldestFirst, IReadOnlyList<string> originalOrderOldestFirst) =>
         oldestFirst.All(s => s.Action == RebaseAction.Pick && s.Message == s.OriginalMessage)
         && oldestFirst.Select(s => s.Hash).SequenceEqual(originalOrderOldestFirst);
 
-    /// <summary>Builds the todo text; message files for reworded/squashed groups are written to <paramref name="workDir"/>.</summary>
+    /// <summary>Формирует текст todo; файлы сообщений для групп reword/squash записываются в <paramref name="workDir"/>.</summary>
     public static string Build(IReadOnlyList<RebaseStep> oldestFirst, string workDir)
     {
         if (Validate(oldestFirst) is { } error) throw new InvalidOperationException(error);
@@ -35,6 +36,7 @@ public static class RebaseTodo
         var needsMessage = false;
         var fileNo = 0;
 
+        // Emits the amended message for the current squash/reword group, if it needs one.
         void FlushGroup()
         {
             if (needsMessage)

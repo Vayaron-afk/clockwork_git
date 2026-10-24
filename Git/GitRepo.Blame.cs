@@ -3,10 +3,11 @@ using Avalonia.Media.Immutable;
 
 namespace ClockworkGit.Git;
 
-// File history (log --follow) and blame.
+/// <summary>Операции получения истории файла и сведений об авторах строк репозитория.</summary>
 public sealed partial class GitRepo
 {
-    /// <summary>Commits that changed the file, newest first, following renames.</summary>
+    /// <summary>История файла от HEAD через log --follow -M: запрашивается до limit коммитов, записи без списка файлов пропускаются.</summary>
+    /// <remarks>Пути разбираются по строкам и табуляции, без NUL-разделения; имена с табуляцией или переводом строки не поддерживаются этим разбором.</remarks>
     public async Task<List<FileHistoryEntry>> FileLog(string path, int limit = 2000)
     {
         var r = await Run("-c", "log.showSignature=false", "log", "--follow", "-M", $"-n{limit}",
@@ -41,8 +42,8 @@ public sealed partial class GitRepo
     }
 
     /// <summary>
-    /// git blame of <paramref name="path"/> at <paramref name="rev"/>, or of the working tree file when rev is null
-    /// (uncommitted lines then have an all-zero hash).
+    /// Результат git blame для <paramref name="path"/> в ревизии <paramref name="rev"/> либо для файла рабочей копии,
+    /// если rev равен null (у незакоммиченных строк в этом случае нулевой хеш).
     /// </summary>
     public async Task<List<BlameLine>> Blame(string path, string? rev)
     {
@@ -55,6 +56,7 @@ public sealed partial class GitRepo
         return await Task.Run(() => ParseBlame(r.Output));
     }
 
+    /// <summary>Метаданные, общие для всех строк blame, относящихся к одному коммиту.</summary>
     sealed class BlameCommit
     {
         public string Author = "", Summary = "", Path = "";
@@ -63,8 +65,8 @@ public sealed partial class GitRepo
     }
 
     /// <summary>
-    /// Porcelain format: "sha origLine finalLine [count]", then key/value lines the first time a commit appears,
-    /// then the line itself prefixed by a tab.
+    /// Формат porcelain: «sha origLine finalLine [count]», затем строки ключ/значение при первом появлении коммита,
+    /// а после них — сама строка с префиксом табуляции.
     /// </summary>
     static List<BlameLine> ParseBlame(string output)
     {
@@ -128,6 +130,7 @@ public sealed partial class GitRepo
         return (IBrush)new ImmutableSolidColorBrush(Color.FromRgb(R(0x2b, 0x8a), R(0x30, 0x5c), R(0x3a, 0x1e)));
     }).ToArray();
 
+    /// <summary>Отмечает границы последовательностей коммитов и назначает строкам blame цвета в зависимости от давности изменений.</summary>
     static void ColorByAge(List<BlameLine> lines)
     {
         var committed = lines.Where(l => !l.IsUncommitted).Select(l => l.Date.ToUnixTimeSeconds()).Distinct().Order().ToList();

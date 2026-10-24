@@ -5,7 +5,7 @@ using Avalonia.Media.Immutable;
 
 namespace ClockworkGit.Controls;
 
-/// <summary>Draws the graph lanes of one commit row (see <see cref="GraphBuilder"/> for the lane model).</summary>
+/// <summary>Отрисовывает линии графа для одной строки коммита; модель линий описана в <see cref="GraphBuilder"/>.</summary>
 public sealed class GraphCell : Control
 {
     public const double LaneWidth = 14;
@@ -34,6 +34,7 @@ public sealed class GraphCell : Control
         set => SetValue(RowProperty, value);
     }
 
+    /// <summary>Вычисляет ширину по наибольшему номеру линии в этой строке графа.</summary>
     protected override Size MeasureOverride(Size availableSize)
     {
         var r = Row;
@@ -42,8 +43,10 @@ public sealed class GraphCell : Control
         return new Size(lanes * LaneWidth + 6, 0);
     }
 
+    /// <summary>Преобразует индекс линии в горизонтальную координату её центра.</summary>
     static double X(int lane) => lane * LaneWidth + LaneWidth / 2 + 2;
 
+    /// <summary>Отрисовывает входящие линии, соединения с родительскими коммитами и узел текущего коммита.</summary>
     public override void Render(DrawingContext ctx)
     {
         var r = Row;
@@ -69,6 +72,7 @@ public sealed class GraphCell : Control
             ctx.DrawEllipse(Palette[r.Node % Palette.Length], NodeOutline, center, 4.5, 4.5);
     }
 
+    /// <summary>Отрисовывает вертикальную линию или плавную кривую между точками соединения линий.</summary>
     static void Curve(DrawingContext ctx, IPen pen, Point a, Point b)
     {
         if (Math.Abs(a.X - b.X) < 0.5)

@@ -3,7 +3,7 @@ using Avalonia.Media.Immutable;
 
 namespace ClockworkGit.Models;
 
-/// <summary>A commit row of the graph; the first row is the working tree pseudo-commit.</summary>
+/// <summary>Строка графа коммитов; первая строка — псевдокоммит рабочей копии.</summary>
 public sealed class CommitInfo : Observable
 {
     public const string WorkingTreeId = "WORKTREE";
@@ -24,16 +24,23 @@ public sealed class CommitInfo : Observable
     public GraphRow? Graph { get; set; }
 
     GraphRow? _shownGraph;
-    /// <summary>The graph row while the list is unfiltered; null hides lanes for filtered results.</summary>
+    /// <summary>Строка графа при отсутствии фильтра; null скрывает линии графа в отфильтрованном списке.</summary>
     public GraphRow? ShownGraph { get => _shownGraph; set => Set(ref _shownGraph, value); }
 
+    /// <summary>Показывает, представляет ли строка текущий индекс и рабочую копию, а не коммит.</summary>
     public bool IsWorkingTree => Hash == WorkingTreeId;
+    /// <summary>Показывает, помечен ли коммит какой-либо веткой или тегом.</summary>
     public bool HasRefs => Refs.Count > 0;
+    /// <summary>Показывает, нужно ли отображать аватар автора для этой строки.</summary>
     public bool HasAvatar => !IsWorkingTree;
+    /// <summary>Задаёт полужирное начертание для рабочей копии и обычное — для коммитов.</summary>
     public FontWeight SubjectWeight => IsWorkingTree ? FontWeight.Bold : FontWeight.Normal;
+    /// <summary>Сокращённый хеш коммита или пустая строка для рабочей копии.</summary>
     public string ShortHash => IsWorkingTree ? "" : Hash[..Math.Min(8, Hash.Length)];
+    /// <summary>Относительная дата коммита или пустая строка для рабочей копии.</summary>
     public string DateText => IsWorkingTree ? "" : Format.RelativeDate(Date);
 
+    /// <summary>Заглавные инициалы автора для аватара; если имя пустое, возвращается вопросительный знак.</summary>
     public string Initials
     {
         get
@@ -48,7 +55,7 @@ public sealed class CommitInfo : Observable
         }
     }
 
-    /// <summary>Stable colour per author e-mail.</summary>
+    /// <summary>Стабильный цвет, определяемый по адресу электронной почты автора.</summary>
     public IBrush AvatarBrush
     {
         get
@@ -59,12 +66,14 @@ public sealed class CommitInfo : Observable
         }
     }
 
+    /// <summary>Проверяет совпадение фильтра без учёта регистра с темой, автором, началом хеша и именами ссылок.</summary>
     public bool Matches(string filter) =>
         Subject.Contains(filter, StringComparison.OrdinalIgnoreCase)
         || Author.Contains(filter, StringComparison.OrdinalIgnoreCase)
         || Hash.StartsWith(filter, StringComparison.OrdinalIgnoreCase)
         || Refs.Any(r => r.Name.Contains(filter, StringComparison.OrdinalIgnoreCase));
 
+    /// <summary>Создаёт псевдокоммит для отображения текущего состояния индекса и рабочей копии.</summary>
     public static CommitInfo WorkingTree(string? parent, int changes) => new()
     {
         Hash = WorkingTreeId,

@@ -3,7 +3,7 @@ using Avalonia.Media.Immutable;
 
 namespace ClockworkGit.Models;
 
-/// <summary>One aligned line of a side-by-side diff; an empty line number means "no line on this side".</summary>
+/// <summary>Одна выровненная строка сравнения бок о бок; пустой номер означает, что на этой стороне строки нет.</summary>
 public sealed class DiffRow
 {
     public static readonly IBrush ContextBg = Brushes.Transparent;
@@ -11,7 +11,7 @@ public sealed class DiffRow
     public static readonly IBrush AddedBg = new ImmutableSolidColorBrush(Color.Parse("#1f4526"));
     public static readonly IBrush EmptyBg = new ImmutableSolidColorBrush(Color.Parse("#26272a"));
     public static readonly IBrush HunkBg = new ImmutableSolidColorBrush(Color.Parse("#2b3442"));
-    /// <summary>Background of the changed part inside a changed line.</summary>
+    /// <summary>Фон изменившейся части строки.</summary>
     public static readonly IBrush RemovedHi = new ImmutableSolidColorBrush(Color.Parse("#8c3640"));
     public static readonly IBrush AddedHi = new ImmutableSolidColorBrush(Color.Parse("#2f7d3f"));
 
@@ -26,20 +26,23 @@ public sealed class DiffRow
     public int LeftHiLength { get; init; }
     public int RightHiStart { get; init; }
     public int RightHiLength { get; init; }
-    /// <summary>Index of the "-" line in the raw unified diff, -1 if none; used to build partial patches.</summary>
+    /// <summary>Индекс строки «-» в исходном unified diff; -1, если её нет. Используется при создании частичного патча.</summary>
     public int LeftLine { get; init; } = -1;
-    /// <summary>Index of the "+" line in the raw unified diff, -1 if none.</summary>
+    /// <summary>Индекс строки «+» в исходном unified diff; -1, если её нет.</summary>
     public int RightLine { get; init; } = -1;
 
-    /// <summary>Short annotation shown at the right edge of the line, e.g. "→ ash_body_basecolor.png".</summary>
+    /// <summary>Краткая подпись у правого края строки, например «→ ash_body_basecolor.png».</summary>
     public string? LeftNote { get; set; }
     public string? LeftNoteTip { get; set; }
     public string? RightNote { get; set; }
     public string? RightNoteTip { get; set; }
 
+    /// <summary>Показывает, содержит ли строка diff текст старой версии.</summary>
     public bool HasLeft => LeftNo.Length > 0;
+    /// <summary>Показывает, содержит ли строка diff текст новой версии.</summary>
     public bool HasRight => RightNo.Length > 0;
 
+    /// <summary>Создаёт информационную строку без номеров строк со стандартным фоном заголовка блока diff.</summary>
     public static DiffRow Message(string text) =>
         new() { Kind = DiffRowKind.Message, LeftText = text, LeftBg = HunkBg, RightBg = HunkBg };
 }

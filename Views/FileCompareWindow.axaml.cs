@@ -7,7 +7,7 @@ using Avalonia.VisualTree;
 
 namespace ClockworkGit.Views;
 
-/// <summary>Full-file comparison of one changed file (SmartGit's "File Compare"): text or image.</summary>
+/// <summary>Сравнение файла целиком (аналог «File Compare» в SmartGit): текст или изображение.</summary>
 public partial class FileCompareWindow : Window
 {
     const double RowHeight = 17;
@@ -21,11 +21,13 @@ public partial class FileCompareWindow : Window
     ScrollViewer? _scroll;
     int _loadGen;
 
+    /// <summary>Инициализирует элементы XAML окна сравнения файлов целиком.</summary>
     public FileCompareWindow()
     {
         InitializeComponent();
     }
 
+    /// <summary>Создаёт представление сравнения изменённого файла и его старой и новой ревизий.</summary>
     public FileCompareWindow(GitRepo repo, CommitInfo owner, FileChange file, bool hasHead, bool svgAsText) : this()
     {
         _repo = repo;
@@ -53,8 +55,10 @@ public partial class FileCompareWindow : Window
         Opened += async (_, _) => await Load();
     }
 
+    /// <summary>Показывает, отображается ли файл в текущем режиме как изображение.</summary>
     bool ShowsImage => ImageFormats.IsImage(_file.RelPath) && ModeText.IsChecked != true;
 
+    /// <summary>Загружает строки diff всего файла или декодированные версии изображения и обновляет шкалу изменений.</summary>
     async Task Load()
     {
         var gen = ++_loadGen;
@@ -98,6 +102,7 @@ public partial class FileCompareWindow : Window
         }, DispatcherPriority.Background);
     }
 
+    /// <summary>Находит область прокрутки списка и синхронизирует с ней область просмотра обзорной шкалы.</summary>
     void AttachScroll()
     {
         if (_scroll != null) return;
@@ -110,10 +115,12 @@ public partial class FileCompareWindow : Window
         };
     }
 
+    /// <summary>Индекс самой верхней видимой строки diff.</summary>
     int TopIndex => _scroll == null ? 0 : (int)(_scroll.Offset.Y / RowHeight);
+    /// <summary>Выбранная строка diff или самая верхняя видимая строка, если ничего не выбрано.</summary>
     int CurrentIndex => Rows.SelectedIndex >= 0 ? Rows.SelectedIndex : TopIndex;
 
-    /// <summary>Selects a row and scrolls it to the upper third of the view.</summary>
+    /// <summary>Выбирает строку и прокручивает к ней так, чтобы она оказалась в верхней трети области просмотра.</summary>
     void JumpTo(int index)
     {
         if (_rows.Count == 0) return;
@@ -127,9 +134,12 @@ public partial class FileCompareWindow : Window
         UpdateCounter(index);
     }
 
+    /// <summary>Переходит к следующему блоку изменений.</summary>
     void OnNext(object? sender, RoutedEventArgs e) => Next();
+    /// <summary>Переходит к предыдущему блоку изменений.</summary>
     void OnPrev(object? sender, RoutedEventArgs e) => Prev();
 
+    /// <summary>Переходит к первому блоку изменений после текущей строки.</summary>
     void Next()
     {
         var current = CurrentIndex;
@@ -137,6 +147,7 @@ public partial class FileCompareWindow : Window
         if (next >= 0) JumpTo(next);
     }
 
+    /// <summary>Переходит к последнему блоку изменений перед текущей строкой.</summary>
     void Prev()
     {
         var current = CurrentIndex;
@@ -144,6 +155,7 @@ public partial class FileCompareWindow : Window
         if (prev >= 0) JumpTo(prev);
     }
 
+    /// <summary>Отображает номер текущего блока изменений или сообщает об отсутствии текстовых изменений.</summary>
     void UpdateCounter(int index)
     {
         if (_changeStarts.Count == 0)
@@ -155,6 +167,7 @@ public partial class FileCompareWindow : Window
         ChangeCounter.Text = k < 0 ? $"{_changeStarts.Count} change(s)" : $"Change {k + 1} of {_changeStarts.Count}";
     }
 
+    /// <summary>Показывает номера выбранных строк старой и новой версий и обновляет счётчик изменений.</summary>
     void UpdateStatus()
     {
         if (Rows.SelectedItem is not DiffRow row) return;
@@ -165,6 +178,7 @@ public partial class FileCompareWindow : Window
         UpdateCounter(Rows.SelectedIndex);
     }
 
+    /// <summary>Обрабатывает сочетания клавиш для навигации по изменениям, копирования в буфер обмена и закрытия окна.</summary>
     async void OnKey(object? sender, KeyEventArgs e)
     {
         var shift = e.KeyModifiers.HasFlag(KeyModifiers.Shift);

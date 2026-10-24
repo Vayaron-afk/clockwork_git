@@ -3,7 +3,7 @@ using Avalonia.Media.Immutable;
 
 namespace ClockworkGit.ViewModels;
 
-/// <summary>A repository in the Repositories list, with its working-tree and sync status.</summary>
+/// <summary>Репозиторий в списке репозиториев с состоянием рабочей копии и синхронизации.</summary>
 public sealed class RepoItem(string path) : Observable
 {
     static readonly IBrush Quiet = new ImmutableSolidColorBrush(Color.Parse("#8a8f98"));
@@ -20,10 +20,11 @@ public sealed class RepoItem(string path) : Observable
         set { if (Set(ref _branch, value)) Raise(nameof(Display)); }
     }
 
+    /// <summary>Имя репозитория и, если доступно, текущая ветка.</summary>
     public string Display => Branch == null ? Name : $"{Name} ({Branch})";
 
     RepoSummary? _summary;
-    /// <summary>Last git status overview; null until read or when the folder is missing.</summary>
+    /// <summary>Последняя сводка git status; null до загрузки, при отсутствующем каталоге или ошибке Git.</summary>
     public RepoSummary? Summary
     {
         get => _summary;
@@ -36,6 +37,7 @@ public sealed class RepoItem(string path) : Observable
     }
 
     DateTime? _lastFetch;
+    /// <summary>Время завершения последней фоновой попытки fetch, включая неуспешную; ручной Fetch основного окна его не обновляет.</summary>
     public DateTime? LastFetch { get => _lastFetch; set { if (Set(ref _lastFetch, value)) RaiseStatus(); } }
 
     bool _fetching;
@@ -44,7 +46,7 @@ public sealed class RepoItem(string path) : Observable
     string? _fetchError;
     public string? FetchError { get => _fetchError; set { if (Set(ref _fetchError, value)) RaiseStatus(); } }
 
-    /// <summary>"⟳ ✎3 ↑1 ↓2": fetching, changed files, to push, to pull.</summary>
+    /// <summary>Формат «⟳ ✎3 ↑1 ↓2»: загрузка, изменённые файлы, коммиты для отправки и получения.</summary>
     public string Badges
     {
         get
@@ -62,8 +64,10 @@ public sealed class RepoItem(string path) : Observable
         }
     }
 
+    /// <summary>Цвет меток состояния репозитория; приоритет имеют ошибки получения и входящие изменения.</summary>
     public IBrush BadgeBrush => FetchError != null ? Failed : Summary is { Behind: > 0 } ? Incoming : Quiet;
 
+    /// <summary>Многострочная подсказка с путём репозитория, состоянием рабочей копии, счётчиками синхронизации и состоянием получения.</summary>
     public string Tip
     {
         get
@@ -83,6 +87,7 @@ public sealed class RepoItem(string path) : Observable
         }
     }
 
+    /// <summary>Уведомляет привязки о возможном изменении меток, цвета и подсказки состояния.</summary>
     void RaiseStatus()
     {
         Raise(nameof(Badges));

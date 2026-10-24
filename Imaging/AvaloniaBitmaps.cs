@@ -7,13 +7,13 @@ using SkiaSharp;
 
 namespace ClockworkGit.Imaging;
 
-/// <summary>Premultiplied RGBA8888 pixels ready to be wrapped into an Avalonia bitmap.</summary>
+/// <summary>Пиксели RGBA8888 с цветовыми компонентами, предварительно умноженными на альфа-канал, подготовленные для растрового изображения Avalonia.</summary>
 public sealed record RenderedImage(byte[] Pixels, int Width, int Height);
 
-/// <summary>Bridges decoded pixels into Avalonia: <see cref="Render"/> runs anywhere, <see cref="ToAvalonia"/> on the UI thread.</summary>
+/// <summary>Передаёт декодированные пиксели в Avalonia: <see cref="Render"/> можно выполнять в любом потоке, <see cref="ToAvalonia"/> — в UI-потоке.</summary>
 public static class AvaloniaBitmaps
 {
-    /// <summary>Unpremultiplied RGBA8888 → displayable pixels: as is, without alpha, or one channel as grayscale.</summary>
+    /// <summary>Преобразует RGBA8888 без умножения на альфу в premultiplied RGBA, непрозрачный RGB или один канал в оттенках серого.</summary>
     public static RenderedImage Render(SKBitmap b, ImageChannel channel = ImageChannel.RGBA)
     {
         int w = b.Width, h = b.Height;
@@ -44,6 +44,7 @@ public static class AvaloniaBitmaps
         return new RenderedImage(dst, w, h);
     }
 
+    /// <summary>Копирует отрисованный буфер RGBA в растровое изображение Avalonia, доступное для записи.</summary>
     public static Bitmap ToAvalonia(RenderedImage image)
     {
         var wb = new WriteableBitmap(new PixelSize(image.Width, image.Height), new Vector(96, 96), PixelFormat.Rgba8888, AlphaFormat.Premul);
@@ -54,7 +55,7 @@ public static class AvaloniaBitmaps
         return wb;
     }
 
-    /// <summary>Grey checkerboard behind images, so transparency is visible.</summary>
+    /// <summary>Серая шахматная подложка под изображениями, позволяющая видеть прозрачные области.</summary>
     public static IBrush CheckerBrush()
     {
         var wb = new WriteableBitmap(new PixelSize(16, 16), new Vector(96, 96), PixelFormat.Rgba8888, AlphaFormat.Premul);

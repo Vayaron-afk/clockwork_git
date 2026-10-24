@@ -6,6 +6,7 @@ namespace ClockworkGit.Views;
 // Context menus of the graph and of the Files list, with the history-rewriting commit actions.
 public partial class MainWindow
 {
+    /// <summary>Создаёт действия для работы с историей и ветками выбранного коммита или строки рабочей копии.</summary>
     void OnGraphContext(object? sender, ContextRequestedEventArgs e)
     {
         if ((e.Source as Control)?.DataContext is CommitInfo clicked && GraphList.SelectedItems?.Contains(clicked) != true)
@@ -89,7 +90,7 @@ public partial class MainWindow
         e.Handled = true;
     }
 
-    /// <summary>Applies commits oldest first, optionally switching to <paramref name="targetBranch"/> first.</summary>
+    /// <summary>Применяет выбранные коммиты через cherry-pick от старых к новым, при необходимости предварительно переключаясь на целевую ветку.</summary>
     async Task CherryPick(List<CommitInfo> commits, string? targetBranch)
     {
         var ordered = Enumerable.Reverse(commits).ToList();
@@ -106,7 +107,7 @@ public partial class MainWindow
         });
     }
 
-    /// <summary>Reverts commits newest first, so later changes are undone before the ones they build on.</summary>
+    /// <summary>Отменяет выбранные коммиты от новых к старым, чтобы сначала отменить поздние изменения и лишь затем те, на которых они основаны.</summary>
     async Task Revert(List<CommitInfo> commits)
     {
         await Do(async () =>
@@ -121,6 +122,7 @@ public partial class MainWindow
         });
     }
 
+    /// <summary>Создаёт для выбранных файлов действия сравнения, просмотра истории, работы с индексом, конфликтами, LFS и файловой системой.</summary>
     void OnFilesContext(object? sender, ContextRequestedEventArgs e)
     {
         if ((e.Source as Control)?.DataContext is FileChange clicked && FilesList.SelectedItems?.Contains(clicked) != true)
@@ -167,7 +169,7 @@ public partial class MainWindow
         e.Handled = true;
     }
 
-    /// <summary>File log and blame; blame starts at the selected commit, or at the working tree file.</summary>
+    /// <summary>Открывает историю файла от HEAD и задаёт выбранную ревизию для начального blame; при необходимости выбирает вкладку blame.</summary>
     void OpenHistory(FileChange f, bool blame)
     {
         if (_repo == null || _filesOwner == null) return;
@@ -175,13 +177,14 @@ public partial class MainWindow
         new FileHistoryWindow(_repo, f.RelPath, rev, blame).Show(this);
     }
 
-    /// <summary>Resolves conflicts by taking one side entirely, then stages the result.</summary>
+    /// <summary>Выбирает указанную сторону конфликта для каждого пути и добавляет результат в индекс.</summary>
     Task TakeSide(string side, string[] paths) => Do(async () =>
     {
         if (await Exec(["checkout", side, "--", .. paths]))
             await Exec(["add", "--", .. paths]);
     });
 
+    /// <summary>Создаёт действия для включения и исключения файла из LFS, а также для управления блокировками.</summary>
     MenuItem LfsMenu(FileChange f)
     {
         var repo = _repo!;

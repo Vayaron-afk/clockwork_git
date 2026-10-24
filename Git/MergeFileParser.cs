@@ -1,12 +1,14 @@
 namespace ClockworkGit.Git;
 
-/// <summary>Parses <c>git merge-file -p --diff3 -L OURS -L BASE -L THEIRS</c> output into chunks.</summary>
+/// <summary>Разбирает вывод <c>git merge-file -p --diff3 -L OURS -L BASE -L THEIRS</c> на фрагменты.</summary>
 public static class MergeFileParser
 {
     public const string OursLabel = "OURS", BaseLabel = "BASE", TheirsLabel = "THEIRS";
 
+    /// <summary>Текущая секция, считываемая из блока конфликта diff3.</summary>
     enum State { Common, Ours, Base, Theirs }
 
+    /// <summary>Разделяет вывод слияния diff3 на общие фрагменты и конфликты и определяет наличие перевода строки в конце.</summary>
     public static List<MergeChunk> Parse(string merged, out bool endsWithNewline)
     {
         endsWithNewline = merged.EndsWith('\n');

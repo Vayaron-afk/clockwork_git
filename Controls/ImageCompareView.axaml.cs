@@ -7,7 +7,7 @@ using SkiaSharp;
 
 namespace ClockworkGit.Controls;
 
-/// <summary>Old/new image comparison: side by side, onion skin, pixel difference; zoom with synced scrolling.</summary>
+/// <summary>Сравнение старого и нового изображений: бок о бок, наложение и попиксельная разница; масштабирование с синхронной прокруткой.</summary>
 public partial class ImageCompareView : UserControl
 {
     static readonly double[] Zooms = [0, 0.25, 0.5, 1, 2, 4, 8]; // 0 = fit
@@ -20,8 +20,10 @@ public partial class ImageCompareView : UserControl
     long _oldSize = -1, _newSize = -1;
     Task _rendering = Task.CompletedTask;
 
+    /// <summary>Текущий выбранный канал изображения, ограниченный допустимым диапазоном каналов.</summary>
     ImageChannel Channel => (ImageChannel)Math.Clamp(ChannelBox.SelectedIndex, 0, 5);
 
+    /// <summary>Настраивает области изображений, режимы отображения, выбор масштаба и каналов, а также синхронизацию прокрутки.</summary>
     public ImageCompareView()
     {
         InitializeComponent();
@@ -45,6 +47,7 @@ public partial class ImageCompareView : UserControl
         NewScroll.ScrollChanged += (_, _) => Sync(NewScroll, OldScroll);
     }
 
+    /// <summary>Передаёт смещение прокрутки парному просмотру изображения, не запуская обратную синхронизацию.</summary>
     void Sync(ScrollViewer from, ScrollViewer to)
     {
         if (_syncing) return;
@@ -53,6 +56,7 @@ public partial class ImageCompareView : UserControl
         _syncing = false;
     }
 
+    /// <summary>Очищает сравнение, делает результаты текущей загрузки устаревшими и освобождает кэшированные источники изображений.</summary>
     public async void Clear()
     {
         _gen++;
@@ -61,7 +65,7 @@ public partial class ImageCompareView : UserControl
         await ReleaseSources();
     }
 
-    /// <summary>Waits for a running render before disposing the bitmaps it reads.</summary>
+    /// <summary>Ожидает завершения выполняемой отрисовки перед освобождением используемых ею растров.</summary>
     async Task ReleaseSources()
     {
         var oldSrc = _old;
@@ -72,7 +76,7 @@ public partial class ImageCompareView : UserControl
         newSrc?.Dispose();
     }
 
-    /// <summary>Decodes both versions off the UI thread; a newer call cancels an older one.</summary>
+    /// <summary>Декодирует обе версии вне UI-потока; результат предыдущего вызова отбрасывается без остановки его декодирования.</summary>
     public async Task ShowAsync(byte[]? oldBytes, byte[]? newBytes, string path)
     {
         var gen = ++_gen;
@@ -96,7 +100,7 @@ public partial class ImageCompareView : UserControl
         await _rendering;
     }
 
-    /// <summary>Builds the shown bitmaps and the difference for the selected channel.</summary>
+    /// <summary>Создаёт отображаемые растры и изображение различий для выбранного канала.</summary>
     async Task Render(int gen)
     {
         var (o, n, channel) = (_old, _new, Channel);
@@ -138,6 +142,7 @@ public partial class ImageCompareView : UserControl
         UpdateMode();
     }
 
+    /// <summary>Назначает растры представлениям и освобождает растры, назначенные ранее.</summary>
     void SetImages(Bitmap? oldImage, Bitmap? newImage, Bitmap? diffImage)
     {
         var previous = new[] { OldImage.Source, NewImage.Source, DiffImage.Source };
@@ -149,6 +154,7 @@ public partial class ImageCompareView : UserControl
         foreach (var p in previous) (p as IDisposable)?.Dispose();
     }
 
+    /// <summary>Применяет выбранный режим сравнения, масштаб, параметры полос прокрутки и качество интерполяции.</summary>
     void UpdateMode()
     {
         var onion = ModeOnion.IsChecked == true;

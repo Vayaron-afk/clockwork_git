@@ -1,16 +1,22 @@
 namespace ClockworkGit.Unity;
 
 /// <summary>
-/// Checks run before a commit: Unity asset/.meta pairs (files and folders under each project's Assets/)
-/// and large files that would go into git history instead of LFS.
+/// Проверки перед созданием коммита: соответствие ресурсов Unity файлам .meta (файлы и папки в Assets/ каждого проекта),
+/// известные чужие блокировки LFS и крупные файлы вне LFS. Используются статусы и содержимое рабочей копии,
+/// поэтому результат является предупреждением, а не полной проверкой будущего дерева коммита.
 /// </summary>
 public static class CommitChecks
 {
     public const long LargeFileBytes = 10L * 1024 * 1024;
     const string ProjectMarker = "ProjectSettings/ProjectVersion.txt";
 
-    /// <param name="stageAll">Whether the commit stages every change (otherwise only staged files are committed).</param>
-    /// <param name="locks">Known LFS locks by path: committing a file someone else locked makes the push fail.</param>
+    /// <summary>Проверяет будущий коммит на проблемы с .meta Unity, файлы, заблокированные другим пользователем LFS, и крупные файлы вне LFS.</summary>
+    /// <param name="repo">Репозиторий для чтения отслеживаемых путей, атрибутов и файлов на диске.</param>
+    /// <param name="workFiles">Снимок статусов изменённых файлов.</param>
+    /// <param name="stageAll">Проверять все неконфликтные изменения; при false — только файлы с изменениями в индексе. Сам метод индекс не меняет.</param>
+    /// <param name="locks">Последние известные блокировки по путям; null отключает предупреждения о блокировках. Возможность push зависит от проверки блокировок.</param>
+    /// <returns>Предупреждения с необязательными путями .meta, которые можно дополнительно добавить в индекс.</returns>
+    /// <remarks>Размеры и наличие файлов проверяются на диске, атрибуты LFS — в рабочей копии; частично добавленное содержимое индекса отдельно не читается.</remarks>
     public static async Task<List<CommitWarning>> Run(GitRepo repo, IReadOnlyList<FileChange> workFiles, bool stageAll,
         IReadOnlyDictionary<string, LfsLock>? locks = null)
     {
@@ -71,7 +77,7 @@ public static class CommitChecks
                 warnings.Add(new(path, ".meta deleted while the asset stays: Unity will assign a new GUID and every reference to it breaks."));
         }
 
-        // Large files outside LFS bloat every clone forever.
+        // Проверяем размер рабочей версии, даже если в индекс добавлена только часть изменений.
         var big = committing.Values
             .Where(f => !Deletes(f) && File.Exists(repo.FullPath(f.RelPath)) && new FileInfo(repo.FullPath(f.RelPath)).Length > LargeFileBytes)
             .ToList();
@@ -85,7 +91,7 @@ public static class CommitChecks
         return warnings;
     }
 
-    /// <summary>Unity skips hidden names, names ending with '~', "cvs" folders and .tmp files.</summary>
+    /// <summary>Определяет, игнорирует ли Unity путь внутри Assets: скрытые имена, завершающий «~», каталоги cvs и файлы .tmp.</summary>
     static bool IsIgnoredByUnity(string relativeToAssets) =>
         relativeToAssets.Split('/').Any(part =>
             part.StartsWith('.') || part.EndsWith('~') || part.Equals("cvs", StringComparison.OrdinalIgnoreCase)

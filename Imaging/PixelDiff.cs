@@ -3,12 +3,13 @@ using SkiaSharp;
 
 namespace ClockworkGit.Imaging;
 
+/// <summary>Вычисляет попиксельные различия декодированных изображений с учётом выбранных каналов.</summary>
 public static class PixelDiff
 {
     /// <summary>
-    /// Changed pixels in magenta (brighter = bigger change) over a dimmed copy of the new image, comparing only
-    /// the channels in <paramref name="channel"/>. Inputs are unpremultiplied RGBA8888; images of different size
-    /// are compared over their common top-left area.
+    /// Создаёт изображение различий и вычисляет долю изменившихся пикселей для выбранных каналов. Изменённые пиксели
+    /// окрашиваются в пурпурный, остальные — в серый по среднему выбранных каналов нового изображения. Входные данные — RGBA8888 без предварительного умножения цветовых компонентов на альфа-канал;
+    /// изображения разного размера сравниваются в общей области от верхнего левого угла.
     /// </summary>
     public static (SKBitmap Diff, double ChangedPercent) Compute(SKBitmap a, SKBitmap b, ImageChannel channel = ImageChannel.RGBA)
     {

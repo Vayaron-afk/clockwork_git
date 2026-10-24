@@ -1,4 +1,4 @@
 namespace ClockworkGit.Models;
 
-/// <summary>A file diff: git's raw unified diff (empty for untracked files) and its side-by-side rows.</summary>
+/// <summary>Различия файла: исходный unified diff Git (пустой для неотслеживаемого файла) и строки сравнения бок о бок.</summary>
 public sealed record DiffResult(string Raw, List<DiffRow> Rows);

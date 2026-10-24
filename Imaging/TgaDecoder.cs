@@ -3,9 +3,11 @@ using SkiaSharp;
 
 namespace ClockworkGit.Imaging;
 
-/// <summary>Minimal TGA reader: true-color/grayscale, raw or RLE, 8/24/32 bit.</summary>
+/// <summary>Минимальный декодер TGA: полноцветные и оттенки серого, без сжатия или RLE, 8/24/32 бит.</summary>
 static class TgaDecoder
 {
+    /// <summary>Декодирует TGA в RGBA8888 без предварительного умножения на альфу; возвращает null при неподдерживаемом заголовке.</summary>
+    /// <remarks>Полнота пиксельных данных не проверяется: при обрыве потока незаполненные пиксели остаются нулевыми.</remarks>
     public static SKBitmap? Decode(byte[] d)
     {
         if (d.Length < 18) return null;
@@ -20,6 +22,7 @@ static class TgaDecoder
         var rle = type >= 9;
         var i = 0;
 
+        // Converts the next source pixel to RGBA and appends it to the decoded buffer.
         void Put(int p)
         {
             var o = i++ * 4;

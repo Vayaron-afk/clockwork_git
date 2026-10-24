@@ -1,4 +1,4 @@
 namespace ClockworkGit.Models;
 
-/// <summary>An operation git has paused (usually on conflicts) and waits to continue or abort.</summary>
+/// <summary>Обнаруженная по метаданным операция Git. Clean означает отсутствие распознанной операции, а не отсутствие изменений файлов.</summary>
 public enum RepoState { Clean, Merging, CherryPicking, Reverting, Rebasing }

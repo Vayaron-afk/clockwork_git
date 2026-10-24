@@ -1,10 +1,11 @@
 namespace ClockworkGit.Utils;
 
-/// <summary>Case-insensitive order that compares digit runs as numbers: Site2 before Site10.</summary>
+/// <summary>Сортировка без учёта регистра, сравнивающая последовательности цифр как числа: Site2 перед Site10.</summary>
 public sealed class NaturalComparer : IComparer<string>
 {
     public static readonly NaturalComparer Instance = new();
 
+    /// <summary>Сравнивает строки без учёта регистра, воспринимая последовательности цифр как числовые значения.</summary>
     public int Compare(string? a, string? b)
     {
         if (a == null || b == null) return a == null ? (b == null ? 0 : -1) : 1;

@@ -3,7 +3,7 @@ using Avalonia.Media.Immutable;
 
 namespace ClockworkGit.Models;
 
-/// <summary>A branch/tag label shown next to a commit subject.</summary>
+/// <summary>Метка ветки или тега, отображаемая рядом с темой коммита.</summary>
 public sealed class RefBadge(string name, RefKind kind)
 {
     static readonly IBrush HeadBrush = new ImmutableSolidColorBrush(Color.Parse("#3d8a3d"));
@@ -13,8 +13,10 @@ public sealed class RefBadge(string name, RefKind kind)
     static readonly IBrush RecyclableBrush = new ImmutableSolidColorBrush(Color.Parse("#5c5f66"));
 
     public string Name { get; } = kind == RefKind.Head ? "▶ " + name : name;
+    /// <summary>Тип ссылки, представленной этой меткой.</summary>
     public RefKind Kind { get; } = kind;
 
+    /// <summary>Цвет фона, соответствующий типу ссылки.</summary>
     public IBrush Background => Kind switch
     {
         RefKind.Head => HeadBrush,

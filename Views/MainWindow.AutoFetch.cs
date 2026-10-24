@@ -4,12 +4,13 @@ using Avalonia.Threading;
 
 namespace ClockworkGit.Views;
 
-// Status of all repositories in the list and background fetch.
+// Background fetching and status summaries across the repository list.
 public partial class MainWindow
 {
     DispatcherTimer? _fetchTimer;
     bool _fetchingRepos;
 
+    /// <summary>Запускает таймер периодического получения данных и синхронизирует выбранный интервал в меню.</summary>
     void StartAutoFetch()
     {
         UpdateAutoFetchMenu();
@@ -18,6 +19,7 @@ public partial class MainWindow
         _fetchTimer.Start();
     }
 
+    /// <summary>Получает данные репозиториев, для которых истёк интервал с завершения последней фоновой попытки fetch, успешной или нет.</summary>
     async Task AutoFetchTick()
     {
         var minutes = _settings.AutoFetchMinutes;
@@ -26,7 +28,7 @@ public partial class MainWindow
         await FetchRepos(due);
     }
 
-    /// <summary>Fetches one repository at a time, so a slow remote does not pile up processes.</summary>
+    /// <summary>Обрабатывает репозитории по одному, чтобы медленный сервер не приводил к накоплению процессов.</summary>
     async Task FetchRepos(IReadOnlyList<RepoItem> repos)
     {
         if (_fetchingRepos) return;
@@ -41,6 +43,7 @@ public partial class MainWindow
         }
     }
 
+    /// <summary>Получает данные одного репозитория без запроса учётных данных и обновляет его метки состояния.</summary>
     async Task FetchRepo(RepoItem item)
     {
         if (!Directory.Exists(item.Path)) return;
@@ -65,17 +68,20 @@ public partial class MainWindow
         }
     }
 
+    /// <summary>Обновляет сводки состояния всех репозиториев в списке.</summary>
     async Task UpdateRepoSummaries()
     {
         foreach (var item in _repos.ToList()) await UpdateRepoSummary(item);
     }
 
+    /// <summary>Обновляет сводку состояния одного репозитория и сообщает об отсутствующих папках или папках без репозитория.</summary>
     async Task UpdateRepoSummary(RepoItem item)
     {
         item.Summary = await RepoSummary.Read(item.Path);
         if (item.Summary == null) item.Branch = Directory.Exists(item.Path) ? "not a repository" : "missing";
     }
 
+    /// <summary>Обрабатывает команду получения данных всех репозиториев из списка и показывает общий результат.</summary>
     async void OnFetchAllRepos(object? sender, RoutedEventArgs e)
     {
         SetStatus("Fetching all repositories…");
@@ -86,6 +92,7 @@ public partial class MainWindow
                   + (incoming.Count > 0 ? " · incoming: " + string.Join(", ", incoming) : " · nothing new"));
     }
 
+    /// <summary>Сохраняет выбранный в меню репозитория интервал автоматического получения данных.</summary>
     void OnAutoFetchInterval(object? sender, RoutedEventArgs e)
     {
         if (sender is not MenuItem { Tag: string tag } || !int.TryParse(tag, out var minutes)) return;
@@ -95,6 +102,7 @@ public partial class MainWindow
         SetStatus(minutes == 0 ? "Auto-fetch is off" : $"Auto-fetch every {minutes} minutes");
     }
 
+    /// <summary>Отмечает пункт меню, соответствующий сохранённому интервалу автоматического получения данных.</summary>
     void UpdateAutoFetchMenu()
     {
         foreach (var item in AutoFetchMenu.Items.OfType<MenuItem>())

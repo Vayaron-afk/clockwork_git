@@ -6,7 +6,7 @@ using Avalonia.Media.Immutable;
 
 namespace ClockworkGit.Controls;
 
-/// <summary>Whole-file strip with change markers and the visible range; clicking jumps there.</summary>
+/// <summary>Полоса обзора всего файла с маркерами изменений и видимым диапазоном; щелчок перемещает к выбранному месту.</summary>
 public sealed class OverviewRuler : Control
 {
     public static readonly StyledProperty<IReadOnlyList<DiffRow>?> RowsProperty =
@@ -31,8 +31,10 @@ public sealed class OverviewRuler : Control
     public double ViewportStart { get => GetValue(ViewportStartProperty); set => SetValue(ViewportStartProperty, value); }
     public double ViewportCount { get => GetValue(ViewportCountProperty); set => SetValue(ViewportCountProperty, value); }
 
+    /// <summary>Вызывается с индексом строки diff, выбранной щелчком по шкале.</summary>
     public event Action<int>? RowRequested;
 
+    /// <summary>Отрисовывает блоки изменений и индикатор области просмотра для текущего diff.</summary>
     public override void Render(DrawingContext ctx)
     {
         var bounds = new Rect(Bounds.Size);
@@ -63,6 +65,7 @@ public sealed class OverviewRuler : Control
             ctx.FillRectangle(Viewport, new Rect(0, ViewportStart / total * h, bounds.Width, Math.Max(4, ViewportCount / total * h)));
     }
 
+    /// <summary>Преобразует положение указателя в строку diff и запрашивает прокрутку к ней.</summary>
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
         base.OnPointerPressed(e);

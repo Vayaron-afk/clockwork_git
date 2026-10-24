@@ -1,11 +1,12 @@
 namespace ClockworkGit.Git;
 
 /// <summary>
-/// Assigns commits to lanes. Each lane holds the hash it is "waiting for";
-/// lanes never shift, freed slots are reused, so pass-through lines stay vertical.
+/// Распределяет коммиты по линиям. Каждая линия хранит хеш коммита, которого ожидает;
+/// линии не смещаются, освободившиеся позиции используются повторно, поэтому проходящие линии остаются вертикальными.
 /// </summary>
 public static class GraphBuilder
 {
+    /// <summary>Назначает коммитам линии графа в порядке отображения и сохраняет строку графа в каждом коммите.</summary>
     public static void Build(IList<CommitInfo> commits)
     {
         var lanes = new List<string?>();
@@ -36,6 +37,7 @@ public static class GraphBuilder
         }
     }
 
+    /// <summary>Возвращает первую свободную линию или добавляет новую, если заняты все существующие.</summary>
     static int FreeSlot(List<string?> lanes)
     {
         var i = lanes.IndexOf(null);

@@ -2,10 +2,10 @@ using Avalonia.Interactivity;
 
 namespace ClockworkGit.Views;
 
-// Opening the three-way conflict editor.
+// Labels conflict sides and opens the three-way conflict editor.
 public partial class MainWindow
 {
-    /// <summary>What "ours" and "theirs" mean depends on the paused operation; in a rebase they are swapped.</summary>
+    /// <summary>Значение «нашей» и «их» версии зависит от приостановленной операции; при rebase стороны меняются местами.</summary>
     (string Ours, string Theirs) ConflictLabels() => (_repo?.GetState() ?? RepoState.Clean) switch
     {
         RepoState.Rebasing => ("Ours: branch being rebased onto", "Theirs: your commit being replayed"),
@@ -15,6 +15,7 @@ public partial class MainWindow
         _ => ($"Ours: {_currentBranch ?? "HEAD"}", "Theirs: incoming (stash or patch)"),
     };
 
+    /// <summary>Загружает стадии конфликтующего файла из индекса и открывает редактор; после сохранения решения обновляет данные.</summary>
     async Task OpenConflictEditor(FileChange f)
     {
         if (_repo == null || !f.IsConflict) return;
@@ -30,6 +31,7 @@ public partial class MainWindow
         }
     }
 
+    /// <summary>Открывает первый неразрешённый файл по действию «Разрешить» на баннере операции.</summary>
     async void OnResolveConflicts(object? sender, RoutedEventArgs e)
     {
         var first = _workFiles.FirstOrDefault(f => f.IsConflict);

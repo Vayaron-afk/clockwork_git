@@ -3,12 +3,13 @@ using static ClockworkGit.Utils.MenuFactory;
 
 namespace ClockworkGit.Views;
 
-// Git LFS file locks: cached list from the server, badges in the Files list, lock/unlock actions.
+// Git LFS locks: refreshes server state and provides lock/unlock actions.
 public partial class MainWindow
 {
-    /// <summary>Server locks by path; asked on open, after fetch and after lock actions (each request takes ~1–2 s).</summary>
+    /// <summary>Последние известные блокировки по путям; обновляются при открытии, фоновом fetch и действиях LFS, при ошибке запроса сохраняются.</summary>
     Dictionary<string, LfsLock> _locks = new();
 
+    /// <summary>Обновляет удалённые блокировки LFS и метки блокировок у отображаемых файлов.</summary>
     async Task RefreshLocks()
     {
         var repo = _repo;
@@ -24,7 +25,7 @@ public partial class MainWindow
         UpdateStatusRight();
     }
 
-    /// <summary>"🔒 2 yours, 1 other" for the status bar; empty without locks.</summary>
+    /// <summary>Сводка для строки состояния, например «🔒 2 yours, 1 other»; пустая, если блокировок нет.</summary>
     string LocksSummary()
     {
         if (_locks.Count == 0) return "";
@@ -33,6 +34,7 @@ public partial class MainWindow
         return $"   🔒 {mine} yours" + (others > 0 ? $", {others} other" : "");
     }
 
+    /// <summary>Добавляет в меню LFS подходящие команды блокировки, снятия блокировки, принудительного снятия и обновления.</summary>
     void AddLockItems(MenuItem lfs, FileChange f)
     {
         var path = f.RelPath;
@@ -56,7 +58,7 @@ public partial class MainWindow
         }));
     }
 
-    /// <summary>Runs a lock/unlock command, then reloads the lock list before the usual refresh.</summary>
+    /// <summary>Выполняет операцию с блокировкой и обновляет данные сервера при успешном завершении команды.</summary>
     Task LockAction(Func<Task<bool>> command) => Do(async () =>
     {
         if (await command()) await RefreshLocks();

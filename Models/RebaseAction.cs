@@ -1,14 +1,15 @@
 namespace ClockworkGit.Models;
 
-/// <summary>What interactive rebase does with a commit.</summary>
+/// <summary>Действие интерактивного rebase над коммитом.</summary>
 public enum RebaseAction
 {
     Pick,
-    /// <summary>Keep the changes, use an edited message.</summary>
+    /// <summary>Сохранить изменения и использовать отредактированное сообщение.</summary>
     Reword,
-    /// <summary>Meld into the older commit, keeping both messages.</summary>
+    /// <summary>Объединить с предыдущим коммитом, сохранив оба сообщения.</summary>
     Squash,
-    /// <summary>Meld into the older commit, discarding this message.</summary>
+    /// <summary>Объединить с предыдущим коммитом, отбросив это сообщение.</summary>
     Fixup,
+    /// <summary>Удалить коммит и его изменения из истории после rebase.</summary>
     Drop,
 }

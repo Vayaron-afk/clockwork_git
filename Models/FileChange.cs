@@ -3,7 +3,7 @@ using Avalonia.Media.Immutable;
 
 namespace ClockworkGit.Models;
 
-/// <summary>A changed file of a commit or of the working tree (then with index/worktree status).</summary>
+/// <summary>Изменённый файл коммита или рабочей копии (для последней также указывается состояние индекса и рабочей директории).</summary>
 public sealed class FileChange : Observable
 {
     static readonly IBrush Modified = new ImmutableSolidColorBrush(Color.Parse("#6aa6ff"));
@@ -21,14 +21,14 @@ public sealed class FileChange : Observable
     public bool IsConflict { get; init; }
 
     bool _isLfs;
-    /// <summary>The path falls under a filter=lfs rule (at the commit, or in the working tree).</summary>
+    /// <summary>Путь соответствует правилу filter=lfs в коммите или рабочей копии.</summary>
     public bool IsLfs { get => _isLfs; set => Set(ref _isLfs, value); }
 
     static readonly IBrush MyLock = new ImmutableSolidColorBrush(Color.Parse("#2f6b45"));
     static readonly IBrush TheirLock = new ImmutableSolidColorBrush(Color.Parse("#8a3030"));
 
     LfsLock? _lock;
-    /// <summary>LFS server lock on this path, if any.</summary>
+    /// <summary>Блокировка этого пути на сервере LFS, если она есть.</summary>
     public LfsLock? Lock
     {
         get => _lock;

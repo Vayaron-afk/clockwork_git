@@ -5,9 +5,9 @@ using Avalonia.Interactivity;
 namespace ClockworkGit.Views;
 
 /// <summary>
-/// Three-way conflict editor: the stages are merged again with diff3, clean parts are kept,
-/// and each conflict is resolved by picking or editing. Binary files and missing sides are resolved as a whole.
-/// Returns true from ShowDialog when the file was saved.
+/// Редактор трёхсторонних конфликтов: стадии повторно объединяются с помощью diff3, бесконфликтные фрагменты сохраняются,
+/// а каждый конфликт разрешается выбором версии или редактированием. Двоичные файлы и отсутствующие стороны разрешаются целиком.
+/// ShowDialog возвращает true, если файл сохранён.
 /// </summary>
 public partial class ConflictEditorWindow : Window
 {
@@ -20,11 +20,13 @@ public partial class ConflictEditorWindow : Window
     bool _endsWithNewline, _crlf, _bom;
     int _current = -1;
 
+    /// <summary>Инициализирует элементы XAML редактора конфликтов.</summary>
     public ConflictEditorWindow()
     {
         InitializeComponent();
     }
 
+    /// <summary>Создаёт редактор конфликта указанного файла и задаёт подписи сторон с учётом текущей операции Git.</summary>
     public ConflictEditorWindow(GitRepo repo, string path, ConflictSides sides, string oursLabel, string theirsLabel) : this()
     {
         _repo = repo;
@@ -39,6 +41,7 @@ public partial class ConflictEditorWindow : Window
         Opened += async (_, _) => await Load();
     }
 
+    /// <summary>Выполняет слияние текста, создаёт редактируемые фрагменты конфликтов или переключается на разрешение файла целиком.</summary>
     async Task Load()
     {
         var textual = !_sides.IsBinary && _sides.HasBothSides && (!ImageFormats.IsImage(_path) || ImageFormats.IsTextImage(_path));
@@ -51,7 +54,7 @@ public partial class ConflictEditorWindow : Window
 
         _bom = merged.StartsWith('﻿');
         if (_bom) merged = merged[1..];
-        // git wrote the conflicted file with the working tree's line endings; keep them.
+        // Выбираем CRLF, если он встречается в текущем файле на диске; BOM определён выше по результату merge-file.
         var full = _repo.FullPath(_path);
         _crlf = File.Exists(full) && (await File.ReadAllTextAsync(full)).Contains("\r\n");
 
@@ -74,6 +77,7 @@ public partial class ConflictEditorWindow : Window
             : $"{_path}: changes that did not overlap are already merged; {_conflicts.Count} conflict(s) need a decision.";
     }
 
+    /// <summary>Обновляет счётчик неразрешённых конфликтов и разрешает сохранение, только когда разрешены все текстовые конфликты.</summary>
     void UpdateCounter()
     {
         var open = _conflicts.Count(c => !c.IsResolved);
@@ -85,6 +89,7 @@ public partial class ConflictEditorWindow : Window
 
     // ───────────── Navigation and bulk choices ─────────────
 
+    /// <summary>Переходит к следующему или предыдущему неразрешённому конфликту и прокручивает к нему.</summary>
     void GoTo(int direction)
     {
         if (_conflicts.Count == 0) return;
@@ -97,24 +102,30 @@ public partial class ConflictEditorWindow : Window
         StatusText.Text = $"Conflict {next + 1} of {_conflicts.Count}";
     }
 
+    /// <summary>Переходит к следующему неразрешённому конфликту.</summary>
     void OnNext(object? sender, RoutedEventArgs e) => GoTo(1);
+    /// <summary>Переходит к предыдущему неразрешённому конфликту.</summary>
     void OnPrev(object? sender, RoutedEventArgs e) => GoTo(-1);
 
+    /// <summary>Применяет выбранную сторону или порядок сторон к конфликту, связанному с нажатой кнопкой.</summary>
     void OnTake(object? sender, RoutedEventArgs e)
     {
         if (sender is Button { Tag: string choice, DataContext: ConflictSegment conflict }) conflict.Take(choice);
     }
 
+    /// <summary>Разрешает все открытые конфликты выбором нашей версии.</summary>
     void OnAllOurs(object? sender, RoutedEventArgs e)
     {
         foreach (var c in _conflicts.Where(c => !c.IsResolved)) c.Take("ours");
     }
 
+    /// <summary>Разрешает все открытые конфликты выбором их версии.</summary>
     void OnAllTheirs(object? sender, RoutedEventArgs e)
     {
         foreach (var c in _conflicts.Where(c => !c.IsResolved)) c.Take("theirs");
     }
 
+    /// <summary>Обрабатывает сочетания клавиш для перехода между конфликтами и отмену по Escape.</summary>
     void OnKey(object? sender, KeyEventArgs e)
     {
         if (e.Key == Key.F7) { e.Handled = true; GoTo(e.KeyModifiers.HasFlag(KeyModifiers.Shift) ? -1 : 1); }
@@ -123,9 +134,11 @@ public partial class ConflictEditorWindow : Window
 
     // ───────────── Saving ─────────────
 
+    /// <summary>Объединяет разрешённые и бесконфликтные фрагменты, сохраняя исходное наличие перевода строки в конце.</summary>
     string BuildResult() =>
         string.Join("\n", _segments.SelectMany(s => s.ResultLines).Select(l => l.TrimEnd('\r'))) + (_endsWithNewline ? "\n" : "");
 
+    /// <summary>Записывает собранное решение, при необходимости добавляет его в индекс и закрывает окно с успешным результатом.</summary>
     async Task Save(bool markResolved)
     {
         try
@@ -139,14 +152,18 @@ public partial class ConflictEditorWindow : Window
         }
     }
 
+    /// <summary>Сохраняет решение и отмечает файл разрешённым, добавляя его в индекс.</summary>
     async void OnSaveResolved(object? sender, RoutedEventArgs e) => await Save(markResolved: true);
 
+    /// <summary>Сохраняет текущий текст, не добавляя файл в индекс как разрешённый.</summary>
     async void OnSaveWithMarkers(object? sender, RoutedEventArgs e) => await Save(markResolved: false);
 
+    /// <summary>Закрывает редактор конфликтов без сохранения.</summary>
     void OnCancel(object? sender, RoutedEventArgs e) => Close(false);
 
     // ───────────── Binary files, deleted sides ─────────────
 
+    /// <summary>Отображает элементы выбора версии для двоичных конфликтов или конфликтов с одной отсутствующей стороной.</summary>
     async Task ShowWholeFileChoice()
     {
         TextPanel.IsVisible = false;
@@ -172,6 +189,7 @@ public partial class ConflictEditorWindow : Window
         }
     }
 
+    /// <summary>Заменяет или удаляет файл рабочей копии согласно выбранной стороне, затем добавляет результат в индекс.</summary>
     async Task TakeWholeFile(byte[]? side, string flag)
     {
         var r = side == null
@@ -182,6 +200,8 @@ public partial class ConflictEditorWindow : Window
         else await Dialogs.ShowMessage(this, "git failed", r.Message);
     }
 
+    /// <summary>Сохраняет нашу версию или состояние её удаления для конфликта файла целиком.</summary>
     async void OnTakeOursFile(object? sender, RoutedEventArgs e) => await TakeWholeFile(_sides.Ours, "--ours");
+    /// <summary>Сохраняет их версию или состояние её удаления для конфликта файла целиком.</summary>
     async void OnTakeTheirsFile(object? sender, RoutedEventArgs e) => await TakeWholeFile(_sides.Theirs, "--theirs");
 }

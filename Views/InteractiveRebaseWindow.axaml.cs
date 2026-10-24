@@ -7,7 +7,7 @@ using Avalonia.Media.Immutable;
 
 namespace ClockworkGit.Views;
 
-/// <summary>Plan editor for git rebase -i; returns the plan (oldest first) or null when cancelled.</summary>
+/// <summary>Редактор плана git rebase -i; возвращает план от старых коммитов к новым или null при отмене.</summary>
 public partial class InteractiveRebaseWindow : Window
 {
     static readonly IBrush ErrorBrush = new ImmutableSolidColorBrush(Color.Parse("#e06060"));
@@ -16,11 +16,13 @@ public partial class InteractiveRebaseWindow : Window
     readonly ObservableCollection<RebaseItem> _items = new();
     readonly List<string> _originalOldestFirst = new();
 
+    /// <summary>Инициализирует элементы XAML диалога интерактивного rebase.</summary>
     public InteractiveRebaseWindow()
     {
         InitializeComponent();
     }
 
+    /// <summary>Создаёт редактор плана rebase по коммитам от новых к старым и необязательным контексту и предупреждениям.</summary>
     public InteractiveRebaseWindow(IEnumerable<RebaseItem> newestFirst, string header, string? warning) : this()
     {
         foreach (var item in newestFirst)
@@ -44,8 +46,10 @@ public partial class InteractiveRebaseWindow : Window
         }, RoutingStrategies.Tunnel);
     }
 
+    /// <summary>Возвращает текущий редактируемый план в требуемом Git порядке от старых коммитов к новым.</summary>
     List<RebaseStep> StepsOldestFirst() => _items.Reverse().Select(i => i.ToStep()).ToList();
 
+    /// <summary>Проверяет план и обновляет сводку действий и состояние кнопки запуска.</summary>
     void UpdateSummary()
     {
         var steps = StepsOldestFirst();
@@ -57,8 +61,10 @@ public partial class InteractiveRebaseWindow : Window
         StartButton.IsEnabled = error == null && !noOp;
     }
 
+    /// <summary>Проверяет, изменён ли исходный порядок коммитов от старых к новым.</summary>
     bool OrderChanged(List<RebaseStep> steps) => !steps.Select(s => s.Hash).SequenceEqual(_originalOldestFirst);
 
+    /// <summary>Перемещает выбранный коммит на одну позицию и обновляет сводку плана.</summary>
     void Move(int delta)
     {
         var from = Items.SelectedIndex;
@@ -69,8 +75,12 @@ public partial class InteractiveRebaseWindow : Window
         UpdateSummary();
     }
 
+    /// <summary>Перемещает выбранный коммит на одну позицию вверх в списке.</summary>
     void OnMoveUp(object? sender, RoutedEventArgs e) => Move(-1);
+    /// <summary>Перемещает выбранный коммит на одну позицию вниз в списке.</summary>
     void OnMoveDown(object? sender, RoutedEventArgs e) => Move(1);
+    /// <summary>Закрывает диалог и возвращает проверенный план от старых коммитов к новым.</summary>
     void OnStart(object? sender, RoutedEventArgs e) => Close(StepsOldestFirst());
+    /// <summary>Закрывает диалог, не возвращая план rebase.</summary>
     void OnCancel(object? sender, RoutedEventArgs e) => Close(null);
 }

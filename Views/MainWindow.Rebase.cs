@@ -2,11 +2,12 @@ using System.Text;
 
 namespace ClockworkGit.Views;
 
-// Interactive rebase of the current branch from a chosen commit.
+// Validates and runs an interactive rebase of the current branch from a chosen commit.
 public partial class MainWindow
 {
     const int RebaseLimit = 500;
 
+    /// <summary>Формирует и выполняет план интерактивного rebase, начиная с выбранного коммита.</summary>
     async Task InteractiveRebaseFrom(CommitInfo from)
     {
         var repo = _repo;

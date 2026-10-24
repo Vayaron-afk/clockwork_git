@@ -1,10 +1,11 @@
 namespace ClockworkGit.Models;
 
 /// <summary>
-/// A piece of a three-way merge: either lines that merged cleanly (<see cref="Common"/>), or a conflict
-/// with each side's lines. Lines keep a trailing '\r' when the file has one.
+/// Фрагмент трёхстороннего слияния: строки, слитые без конфликта (<see cref="Common"/>), либо конфликт
+/// со строками каждой стороны. Завершающий '\r' каждой строки сохраняется при разборе CRLF.
 /// </summary>
 public sealed record MergeChunk(List<string> Common, List<string>? Ours = null, List<string>? Base = null, List<string>? Theirs = null)
 {
+    /// <summary>Показывает, является ли фрагмент конфликтом, а не успешно слитыми строками.</summary>
     public bool IsConflict => Ours != null;
 }

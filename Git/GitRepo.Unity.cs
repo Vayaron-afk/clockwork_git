@@ -1,6 +1,6 @@
 namespace ClockworkGit.Git;
 
-// Unity projects: GUID → asset path index for annotating diffs.
+/// <summary>Предоставляет кэшированный индекс соответствия GUID ресурсов Unity их путям для аннотаций diff.</summary>
 public sealed partial class GitRepo
 {
     static readonly TimeSpan GuidIndexLifetime = TimeSpan.FromMinutes(2);
@@ -8,7 +8,7 @@ public sealed partial class GitRepo
     Task<UnityGuidIndex>? _guidIndex;
     DateTime _guidIndexBuilt;
 
-    /// <summary>The GUID index of the working tree, rebuilt when older than a couple of minutes.</summary>
+    /// <summary>Индекс GUID рабочей копии; перестраивается, если ему больше нескольких минут.</summary>
     public Task<UnityGuidIndex> GuidIndex()
     {
         if (_guidIndex == null || _guidIndex.IsFaulted || DateTime.Now - _guidIndexBuilt > GuidIndexLifetime)

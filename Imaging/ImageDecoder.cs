@@ -5,12 +5,12 @@ using SkiaSharp;
 namespace ClockworkGit.Imaging;
 
 /// <summary>
-/// Bytes of any supported format → RGBA8888 <b>unpremultiplied</b> <see cref="SKBitmap"/>, so colour hidden
-/// under zero alpha survives (packed texture maps keep data there).
+/// Байты любого поддерживаемого формата → RGBA8888 <see cref="SKBitmap"/> без предварительного умножения цветовых компонентов на альфа-канал, чтобы сохранялся цвет,
+/// скрытый под нулевой альфой (в таких пикселях могут храниться упакованные карты текстур).
 /// </summary>
 public static class ImageDecoder
 {
-    /// <summary>Null when there is no data or the format cannot be decoded.</summary>
+    /// <summary>Равно null, если данных нет или формат невозможно декодировать.</summary>
     public static SKBitmap? Decode(byte[]? data, string path)
     {
         if (data == null || data.Length == 0) return null;
@@ -30,7 +30,7 @@ public static class ImageDecoder
         return dst;
     }
 
-    /// <summary>Skia decode asking for unpremultiplied output, so it does not drop colour under transparent pixels.</summary>
+    /// <summary>Декодирование Skia без предварительного умножения цветовых компонентов на альфа-канал, сохраняющее цвет прозрачных пикселей.</summary>
     static SKBitmap? DecodeSkia(byte[] data)
     {
         using var codec = SKCodec.Create(new MemoryStream(data));
@@ -43,7 +43,7 @@ public static class ImageDecoder
         return SKBitmap.Decode(data);
     }
 
-    /// <summary>True when some pixel is not fully opaque.</summary>
+    /// <summary>Возвращает true, если хотя бы один пиксель не полностью непрозрачен (альфа меньше 255, включая ноль).</summary>
     public static bool UsesAlpha(SKBitmap b)
     {
         var px = b.GetPixelSpan();
@@ -57,8 +57,9 @@ public static class ImageDecoder
     }
 
     /// <summary>
-    /// ImageMagick fallback: PSD (merged composite), TIFF, EXR/HDR, DDS, AVIF, HEIC, SVG…
-    /// Only the first frame/layer is read; vector SVG is rasterized so that the long side is about 1024 px.
+    /// Резервный декодер ImageMagick: PSD (объединённое изображение), TIFF, EXR/HDR, DDS, AVIF, HEIC, SVG и другие.
+    /// Читается только первый кадр или слой; SVG с длинной стороной меньше 1024 пикселей увеличивается при растеризации,
+    /// более крупные SVG не уменьшаются.
     /// </summary>
     static SKBitmap? DecodeMagick(byte[] data, string ext)
     {

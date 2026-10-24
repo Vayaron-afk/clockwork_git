@@ -3,10 +3,10 @@ using System.Text.RegularExpressions;
 
 namespace ClockworkGit.Git;
 
-// Git LFS: which paths are under LFS rules, ls-files, the local cache.
+/// <summary>Получает атрибуты Git LFS, отслеживаемые объекты, данные локального кэша, блокировки и правила.</summary>
 public sealed partial class GitRepo
 {
-    /// <summary>Paths whose filter attribute is "lfs", in the working tree or at <paramref name="source"/>.</summary>
+    /// <summary>Пути, для которых атрибут фильтра равен «lfs», в рабочей копии или источнике <paramref name="source"/>.</summary>
     public async Task<HashSet<string>> LfsAttributed(IReadOnlyCollection<string> paths, string? source = null)
     {
         var set = new HashSet<string>();
@@ -21,6 +21,8 @@ public sealed partial class GitRepo
         return set;
     }
 
+    /// <summary>Возвращает LFS-файлы дерева указанной ревизии (по умолчанию HEAD), размеры и наличие объектов в локальном хранилище LFS.</summary>
+    /// <remarks>Индекс и рабочая копия не сканируются. При неуспешной команде возвращается пустой список; некорректный JSON вызывает исключение.</remarks>
     public async Task<List<LfsFile>> LfsFiles(string rev = "HEAD")
     {
         var list = new List<LfsFile>();
@@ -39,7 +41,8 @@ public sealed partial class GitRepo
         return list;
     }
 
-    /// <summary>filter=lfs rules from the root .gitattributes.</summary>
+    /// <summary>Читает строки с отдельным токеном filter=lfs из корневого .gitattributes, сохраняя шаблон и номер строки.</summary>
+    /// <remarks>Упрощённый разбор по пробелам: кавычки, макросы, вложенные файлы атрибутов и приоритеты правил не обрабатываются.</remarks>
     public List<LfsRule> LfsRules()
     {
         var file = System.IO.Path.Combine(Path, ".gitattributes");
@@ -56,7 +59,8 @@ public sealed partial class GitRepo
         return rules;
     }
 
-    /// <summary>gitattributes-style match: patterns without '/' match the file name anywhere.</summary>
+    /// <summary>Приближённо сопоставляет шаблоны с *, ** и ?; шаблон без «/» проверяется по имени файла в любом каталоге.</summary>
+    /// <remarks>Не реализует полную семантику gitattributes, включая классы символов и экранирование; для фактических атрибутов используйте <see cref="LfsAttributed"/>.</remarks>
     public static bool AttrPatternMatches(string pattern, string relPath)
     {
         var p = pattern.TrimStart('/');
@@ -66,6 +70,7 @@ public sealed partial class GitRepo
         return Regex.IsMatch(target, rx);
     }
 
+    /// <summary>Суммирует размеры файлов в GitDir/lfs/objects; возвращает 0, если каталога нет. Настройка lfs.storage не учитывается.</summary>
     public long LfsCacheBytes()
     {
         var dir = System.IO.Path.Combine(GitDir, "lfs", "objects");
@@ -75,8 +80,9 @@ public sealed partial class GitRepo
     }
 
     /// <summary>
-    /// Locks on the LFS server (one network round trip, ~1–2 s); null when the server cannot be asked
-    /// (offline, no credentials, or locking not supported). Never prompts for a login.
+    /// Запрашивает блокировки через locks --verify --json, при неуспехе пробует locks --json без сведений о владении.
+    /// При резервном запросе IsMine=false у всех записей; null означает, что получить список не удалось.
+    /// Графический вход через GCM отключён; некорректный JSON вызывает исключение.
     /// </summary>
     public async Task<List<LfsLock>?> LfsLocks()
     {
@@ -93,11 +99,13 @@ public sealed partial class GitRepo
         return plain.RootElement.EnumerateArray().Select(e => ParseLock(e, mine: false)).ToList();
     }
 
+    /// <summary>Читает одну группу владения из JSON-ответа команды <c>git lfs locks --verify</c>.</summary>
     static IEnumerable<LfsLock> ParseLocks(JsonElement root, string group, bool mine) =>
         root.TryGetProperty(group, out var list) && list.ValueKind == JsonValueKind.Array
             ? list.EnumerateArray().Select(e => ParseLock(e, mine)).ToList()
             : [];
 
+    /// <summary>Преобразует JSON-объект одной блокировки LFS в модель блокировки приложения.</summary>
     static LfsLock ParseLock(JsonElement e, bool mine) => new(
         e.TryGetProperty("id", out var id) ? id.ToString() : "",
         e.TryGetProperty("path", out var path) ? path.GetString() ?? "" : "",
@@ -105,7 +113,7 @@ public sealed partial class GitRepo
         e.TryGetProperty("locked_at", out var at) && DateTimeOffset.TryParse(at.GetString(), out var when) ? when : DateTimeOffset.MinValue,
         mine);
 
-    /// <summary>Tracked files that match an LFS rule but are still stored as regular git blobs at HEAD.</summary>
+    /// <summary>Отслеживаемые файлы, подходящие под правило LFS, но всё ещё хранящиеся в HEAD как обычные объекты Git.</summary>
     public async Task<List<string>> NotYetInLfs()
     {
         var all = (await Run("ls-files", "-z")).Output.Split('\0', StringSplitOptions.RemoveEmptyEntries);

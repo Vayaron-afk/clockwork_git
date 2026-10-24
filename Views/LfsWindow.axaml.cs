@@ -3,7 +3,7 @@ using Avalonia.Interactivity;
 
 namespace ClockworkGit.Views;
 
-/// <summary>Git LFS overview: ls-files, rules from .gitattributes, cache and migration tools.</summary>
+/// <summary>Обзор Git LFS: файлы HEAD, правила корневого .gitattributes, блокировки, размер кэша и конвертация без переписывания истории.</summary>
 public partial class LfsWindow : Window
 {
     readonly GitRepo _repo = null!;
@@ -11,12 +11,15 @@ public partial class LfsWindow : Window
     List<LfsFile> _files = new();
     List<string> _notInLfs = new();
 
+    /// <summary>Инициализирует элементы XAML окна управления LFS.</summary>
     public LfsWindow()
     {
         InitializeComponent();
     }
 
-    /// <param name="changed">Called after an action that changed the index, so the main window refreshes.</param>
+    /// <summary>Создаёт окно управления LFS для репозитория и задаёт обратный вызов для обновления родительского представления.</summary>
+    /// <param name="repo">Репозиторий, данные и объекты LFS которого отображаются.</param>
+    /// <param name="changed">Вызывается после загрузки выбранных файлов, снятия блокировок и действий, изменяющих индекс.</param>
     public LfsWindow(GitRepo repo, Func<Task> changed) : this()
     {
         _repo = repo;
@@ -36,6 +39,7 @@ public partial class LfsWindow : Window
 
     // ───────────── Locks ─────────────
 
+    /// <summary>Загружает блокировки сервера и сообщает о состоянии подключения и владения на вкладке блокировок.</summary>
     async Task LoadLocks()
     {
         LocksStatus.Text = "Asking the LFS server…";
@@ -46,8 +50,10 @@ public partial class LfsWindow : Window
             : $"{locks.Count} lock(s), {locks.Count(l => l.IsMine)} yours.";
     }
 
+    /// <summary>Обновляет список блокировок сервера по запросу.</summary>
     async void OnRefreshLocks(object? sender, RoutedEventArgs e) => await LoadLocks();
 
+    /// <summary>Снимает блокировки выбранных файлов; если какие-либо файлы принадлежат другому пользователю, сначала запрашивает подтверждение.</summary>
     async void OnUnlock(object? sender, RoutedEventArgs e)
     {
         var selected = LocksList.SelectedItems?.OfType<LfsLock>().ToList() ?? new();
@@ -82,6 +88,7 @@ public partial class LfsWindow : Window
 
     // ───────────── Files ─────────────
 
+    /// <summary>Загружает файлы Git LFS, применяет текущий фильтр и обновляет сведения о правилах.</summary>
     async Task LoadFiles()
     {
         FilesSummary.Text = "Loading…";
@@ -90,6 +97,7 @@ public partial class LfsWindow : Window
         LoadRules();
     }
 
+    /// <summary>Фильтрует и сортирует LFS-файлы и обновляет итоговые значения на вкладке файлов.</summary>
     void ApplyFilesFilter()
     {
         var filter = FilesFilter.Text?.Trim() ?? "";
@@ -104,8 +112,10 @@ public partial class LfsWindow : Window
                             $"total {Format.Size(_files.Sum(f => f.Size))} · {missing} not downloaded";
     }
 
+    /// <summary>Повторно загружает список LFS-файлов.</summary>
     async void OnReloadFiles(object? sender, RoutedEventArgs e) => await LoadFiles();
 
+    /// <summary>Создаёт действия загрузки, открытия в проводнике и копирования для выбранных LFS-файлов.</summary>
     void OnFilesContext(object? sender, ContextRequestedEventArgs e)
     {
         if ((e.Source as Control)?.DataContext is LfsFileRow clicked && LfsFilesList.SelectedItems?.Contains(clicked) != true)
@@ -135,6 +145,7 @@ public partial class LfsWindow : Window
 
     // ───────────── Rules ─────────────
 
+    /// <summary>Показывает правила корневого .gitattributes и приблизительное число соответствующих им LFS-файлов HEAD.</summary>
     void LoadRules()
     {
         RulesList.ItemsSource = _repo.LfsRules()
@@ -146,6 +157,7 @@ public partial class LfsWindow : Window
             .ToList();
     }
 
+    /// <summary>Добавляет шаблон, введённый на вкладке правил, и обновляет данные после успеха.</summary>
     async void OnAddRule(object? sender, RoutedEventArgs e)
     {
         var pattern = NewRule.Text?.Trim() ?? "";
@@ -158,12 +170,14 @@ public partial class LfsWindow : Window
         }
     }
 
+    /// <summary>Удаляет выбранное правило отслеживания и обновляет данные после успеха.</summary>
     async void OnRemoveRule(object? sender, RoutedEventArgs e)
     {
         if (RulesList.SelectedItem is not LfsRuleRow rule) return;
         if (await LfsActions.Untrack(this, _repo, rule.Pattern)) await AfterChange();
     }
 
+    /// <summary>Уведомляет родительское окно об изменении состояния репозитория и заново загружает LFS-файлы.</summary>
     async Task AfterChange()
     {
         await _changed();
@@ -172,6 +186,7 @@ public partial class LfsWindow : Window
 
     // ───────────── Maintenance ─────────────
 
+    /// <summary>Вычисляет размер локального кэша LFS вне UI-потока и показывает его расположение.</summary>
     async Task RecalcCache()
     {
         CacheText.Text = "Calculating…";
@@ -179,8 +194,10 @@ public partial class LfsWindow : Window
         CacheText.Text = $"{Format.Size(bytes)} in {Path.Combine(_repo.GitDir, "lfs", "objects")}";
     }
 
+    /// <summary>Повторно вычисляет размер локального кэша LFS по запросу.</summary>
     async void OnRecalcCache(object? sender, RoutedEventArgs e) => await RecalcCache();
 
+    /// <summary>Находит отслеживаемые файлы, соответствующие правилам LFS, но всё ещё хранящиеся как обычные объекты Git.</summary>
     async void OnAnalyze(object? sender, RoutedEventArgs e)
     {
         AnalyzeButton.IsEnabled = false;
@@ -203,6 +220,7 @@ public partial class LfsWindow : Window
         }
     }
 
+    /// <summary>Запрашивает подтверждение и добавляет проанализированные файлы в индекс как указатели LFS, используя их содержимое из рабочей копии.</summary>
     async void OnConvert(object? sender, RoutedEventArgs e)
     {
         if (_notInLfs.Count == 0) return;
@@ -222,6 +240,7 @@ public partial class LfsWindow : Window
         await _changed();
     }
 
+    /// <summary>Выполняет lfs fetch --all для объектов истории всех локально известных ссылок с сервера по умолчанию; рабочие файлы не обновляются.</summary>
     async void OnFetchAll(object? sender, RoutedEventArgs e)
     {
         FetchAllButton.IsEnabled = false;

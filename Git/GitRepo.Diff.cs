@@ -1,11 +1,11 @@
 namespace ClockworkGit.Git;
 
-// Text diffs and raw file versions of a change.
+/// <summary>Загружает текстовые различия и содержимое старой и новой версий изменённого файла.</summary>
 public sealed partial class GitRepo
 {
     /// <summary>
-    /// Unified diff of one file: a commit against its first parent, or for the working tree according to
-    /// <paramref name="mode"/>. <paramref name="context"/> &lt; 0 means the whole file.
+    /// Unified diff одного файла: коммит сравнивается с первым родителем, а для рабочей копии режим определяется
+    /// параметром <paramref name="mode"/>. Значение <paramref name="context"/> &lt; 0 означает весь файл.
     /// </summary>
     public async Task<string> Diff(CommitInfo owner, FileChange f, int context = 3, bool ignoreWhitespace = false,
         WorkTreeDiffMode mode = WorkTreeDiffMode.All)
@@ -22,7 +22,7 @@ public sealed partial class GitRepo
         return (await Run(args.ToArray())).Output;
     }
 
-    /// <summary>Raw diff and side-by-side rows for one file, including files git does not track yet.</summary>
+    /// <summary>Исходный diff и строки сравнения бок о бок для файла, в том числе ещё не отслеживаемого Git.</summary>
     public async Task<DiffResult> DiffRows(CommitInfo owner, FileChange f, bool hasHead, bool fullFile = false,
         bool ignoreWhitespace = false, WorkTreeDiffMode mode = WorkTreeDiffMode.All)
     {
@@ -37,7 +37,8 @@ public sealed partial class GitRepo
         return new DiffResult(diff, rows);
     }
 
-    /// <summary>Raw bytes of the file before and after the change (LFS objects resolved); null where absent.</summary>
+    /// <summary>Байты файла до и после изменения; для рабочей копии сравниваются HEAD и файл на диске независимо от режима текстового diff.</summary>
+    /// <remarks>Чтение объектов Git применяет smudge-фильтры; при их ошибке возможен возврат указателя LFS. Отсутствующая или недоступная версия равна null.</remarks>
     public async Task<(byte[]? Old, byte[]? New)> LoadVersions(CommitInfo owner, FileChange f, bool hasHead)
     {
         byte[]? oldBytes = null, newBytes = null;
@@ -58,7 +59,7 @@ public sealed partial class GitRepo
         return (oldBytes, newBytes);
     }
 
-    /// <summary>File content at a revision, with LFS/smudge filters applied when possible.</summary>
+    /// <summary>Читает объект через cat-file --filters с применением smudge-фильтров; при ошибке возвращает необработанный объект через show, при повторной ошибке — null.</summary>
     public async Task<byte[]?> Blob(string rev, string path) =>
         await GitRunner.ReadBytesAsync(Path, "cat-file", "--filters", $"{rev}:{path}")
         ?? await GitRunner.ReadBytesAsync(Path, "show", $"{rev}:{path}");

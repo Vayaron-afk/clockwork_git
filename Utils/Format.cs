@@ -2,8 +2,10 @@ using System.Globalization;
 
 namespace ClockworkGit.Utils;
 
+/// <summary>Форматирует размеры и даты для отображения в ClockworkGit.</summary>
 public static class Format
 {
+    /// <summary>Форматирует размер с делителем 1024 и подписями B, KB, MB или GB.</summary>
     public static string Size(long bytes) => bytes switch
     {
         >= 1L << 30 => $"{bytes / (double)(1L << 30):0.##} GB",
@@ -12,7 +14,7 @@ public static class Format
         _ => $"{bytes} B",
     };
 
-    /// <summary>SmartGit-style dates: "12:49", "Yesterday 21:13", "Wednesday 19:28", then the full date.</summary>
+    /// <summary>Локальная дата: «12:49», «Yesterday 21:13», английское имя дня для последних семи дней, затем «dd.MM.yyyy HH:mm».</summary>
     public static string RelativeDate(DateTimeOffset date)
     {
         var local = date.LocalDateTime;

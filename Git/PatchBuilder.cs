@@ -1,23 +1,24 @@
 namespace ClockworkGit.Git;
 
 /// <summary>
-/// Builds a patch containing only selected lines of a unified diff, for <c>git apply</c>.
-/// Unselected changes are turned into context or dropped so the patch still applies to its target:
+/// Создаёт патч только с выбранными строками unified diff для команды <c>git apply</c>.
+/// Невыбранные изменения становятся контекстом или удаляются, чтобы патч применялся к нужной версии:
 /// <list type="bullet">
-/// <item>forward (stage): the target is the old side, so an unselected "-" stays as context, an unselected "+" is dropped;</item>
-/// <item>reverse (unstage, discard; applied with --reverse): the target is the new side, so an unselected "+"
-/// stays as context and an unselected "-" is dropped.</item>
+/// <item>прямое применение (добавление в индекс): целевая версия — старая, поэтому невыбранные строки «-» остаются контекстом, а строки «+» удаляются;</item>
+/// <item>обратное применение (удаление из индекса, отмена; применяется с --reverse): целевая версия — новая, поэтому невыбранные строки «+»
+/// остаются контекстом, а строки «-» удаляются.</item>
 /// </list>
-/// Hunk line counts are recomputed, but the patch is meant to be applied with --recount anyway,
-/// because skipped hunks shift the "new" start lines.
+/// Количество строк в блоках пересчитывается; начальные номера строк сохраняются из исходного diff.
+/// Для патча, построенного в обратном режиме, вызывающий код должен передать git apply --reverse.
 /// </summary>
 public static class PatchBuilder
 {
-    /// <summary>Raw diff line indices of the selected rows; whole change blocks (or hunks, for hunk headers) on request.</summary>
+    /// <summary>Индексы исходных строк diff для выбранных строк; при необходимости выбираются целые блоки изменений или блоки diff.</summary>
     public static HashSet<int> SelectLines(IReadOnlyList<DiffRow> rows, IEnumerable<int> selectedRows, bool wholeBlocks)
     {
         var lines = new HashSet<int>();
 
+        // Adds the raw unified-diff line indices associated with a changed row.
         void Add(DiffRow r)
         {
             if (r.Kind != DiffRowKind.Change) return;
@@ -44,7 +45,7 @@ public static class PatchBuilder
         return lines;
     }
 
-    /// <summary>The patch, or null when the selection contains no changes.</summary>
+    /// <summary>Патч или null, если выбранные строки не содержат изменений.</summary>
     public static string? Build(string rawDiff, IReadOnlySet<int> selected, bool reverse)
     {
         var lines = rawDiff.Split('\n');

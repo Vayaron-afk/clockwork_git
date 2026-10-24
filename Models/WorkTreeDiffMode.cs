@@ -1,12 +1,12 @@
 namespace ClockworkGit.Models;
 
-/// <summary>What a working-tree file is compared against.</summary>
+/// <summary>С чем сравнивается файл рабочей копии.</summary>
 public enum WorkTreeDiffMode
 {
-    /// <summary>HEAD ↔ working tree: everything not committed.</summary>
+    /// <summary>HEAD ↔ рабочая копия: все незакоммиченные изменения.</summary>
     All,
-    /// <summary>Index ↔ working tree: what Stage would add.</summary>
+    /// <summary>Индекс ↔ рабочая копия: изменения, которые попадут в индекс при Stage.</summary>
     Unstaged,
-    /// <summary>HEAD ↔ index: what Commit would record.</summary>
+    /// <summary>HEAD ↔ индекс: изменения, которые войдут в коммит.</summary>
     Staged,
 }

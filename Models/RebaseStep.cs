@@ -1,4 +1,4 @@
 namespace ClockworkGit.Models;
 
-/// <summary>One line of an interactive rebase plan.</summary>
+/// <summary>Один шаг плана интерактивного rebase.</summary>
 public sealed record RebaseStep(string Hash, RebaseAction Action, string Message, string OriginalMessage);

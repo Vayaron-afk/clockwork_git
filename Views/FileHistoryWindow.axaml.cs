@@ -5,23 +5,28 @@ using static ClockworkGit.Utils.MenuFactory;
 
 namespace ClockworkGit.Views;
 
-/// <summary>Log of one file (following renames) and git blame with "blame before this change" navigation.</summary>
+/// <summary>История файла с отслеживанием переименований и git blame с переходом «blame до этого изменения».</summary>
 public partial class FileHistoryWindow : Window
 {
     readonly GitRepo _repo = null!;
     readonly string _path = "";
     List<FileHistoryEntry> _history = new();
-    /// <summary>Blame target: revision (null = working tree) and the file's path there.</summary>
+    /// <summary>Цель blame: ревизия (null означает рабочую копию) и путь файла в ней.</summary>
     (string? Rev, string Path) _blameAt;
     readonly Stack<(string? Rev, string Path)> _blameBack = new();
     int _entryGen, _blameGen;
 
+    /// <summary>Инициализирует элементы XAML окна истории файла.</summary>
     public FileHistoryWindow()
     {
         InitializeComponent();
     }
 
-    /// <param name="blameRev">Revision to blame at first; null blames the working tree file.</param>
+    /// <summary>Создаёт окно истории и blame файла; при необходимости сразу открывает представление blame.</summary>
+    /// <param name="repo">Репозиторий, содержащий файл.</param>
+    /// <param name="path">Путь файла относительно репозитория.</param>
+    /// <param name="blameRev">Начальная ревизия только для blame; null означает рабочую копию. История независимо загружается от HEAD.</param>
+    /// <param name="openBlame">Открывать вкладку blame вместо истории.</param>
     public FileHistoryWindow(GitRepo repo, string path, string? blameRev, bool openBlame) : this()
     {
         _repo = repo;
@@ -48,6 +53,7 @@ public partial class FileHistoryWindow : Window
 
     // ───────────── History ─────────────
 
+    /// <summary>Загружает историю коммитов файла, обновляет заголовок и выбирает начальную ревизию.</summary>
     async Task LoadHistory()
     {
         _history = await _repo.FileLog(_path);
@@ -60,6 +66,7 @@ public partial class FileHistoryWindow : Window
         HistoryList.SelectedItem = _history.FirstOrDefault(h => h.Commit.Hash == _blameAt.Rev) ?? _history.FirstOrDefault();
     }
 
+    /// <summary>Показывает метаданные коммита и текстовый или графический diff выбранного файла.</summary>
     async void ShowEntry(FileHistoryEntry? entry)
     {
         var gen = ++_entryGen;
@@ -104,6 +111,7 @@ public partial class FileHistoryWindow : Window
         DiffList.ItemsSource = diff.Rows;
     }
 
+    /// <summary>Выбирает запись истории для коммита строки blame, если она есть в загруженной истории.</summary>
     void ShowInHistory(string sha)
     {
         var entry = _history.FirstOrDefault(h => h.Commit.Hash == sha);
@@ -119,6 +127,7 @@ public partial class FileHistoryWindow : Window
         HistoryList.ScrollIntoView(entry);
     }
 
+    /// <summary>Показывает blame выбранного файла на выбранном коммите истории.</summary>
     void OnBlameAtRevision(object? sender, RoutedEventArgs e)
     {
         if (HistoryList.SelectedItem is not FileHistoryEntry entry) return;
@@ -126,6 +135,7 @@ public partial class FileHistoryWindow : Window
         BlameTo(entry.Commit.Hash, entry.File.RelPath);
     }
 
+    /// <summary>Открывает сравнение файла целиком для выбранной записи истории.</summary>
     void OnOpenCompare(object? sender, RoutedEventArgs e)
     {
         if (HistoryList.SelectedItem is FileHistoryEntry entry)
@@ -134,6 +144,7 @@ public partial class FileHistoryWindow : Window
 
     // ───────────── Blame ─────────────
 
+    /// <summary>Загружает blame для текущих ревизии и пути и отображает количество строк и коммитов.</summary>
     async Task LoadBlame()
     {
         var gen = ++_blameGen;
@@ -167,6 +178,7 @@ public partial class FileHistoryWindow : Window
         }
     }
 
+    /// <summary>Переходит к blame другой ревизии или пути, сохраняя текущее положение для возврата.</summary>
     void BlameTo(string? rev, string path)
     {
         if (_blameAt == (rev, path)) return;
@@ -175,6 +187,7 @@ public partial class FileHistoryWindow : Window
         _ = LoadBlame();
     }
 
+    /// <summary>Возвращается к предыдущим ревизии и пути blame.</summary>
     void OnBlameBack(object? sender, RoutedEventArgs e)
     {
         if (_blameBack.Count == 0) return;
@@ -182,6 +195,7 @@ public partial class FileHistoryWindow : Window
         _ = LoadBlame();
     }
 
+    /// <summary>Создаёт действия для строк blame: переход по истории и копирование текста коммита или строки.</summary>
     void OnBlameContext(object? sender, ContextRequestedEventArgs e)
     {
         if ((e.Source as Control)?.DataContext is not BlameLine line) return;

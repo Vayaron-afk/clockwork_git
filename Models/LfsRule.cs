@@ -1,4 +1,4 @@
 namespace ClockworkGit.Models;
 
-/// <summary>A filter=lfs pattern and its 1-based line in the root .gitattributes.</summary>
+/// <summary>Шаблон filter=lfs и номер его строки (нумерация с единицы) в корневом .gitattributes.</summary>
 public sealed record LfsRule(string Pattern, int Line);

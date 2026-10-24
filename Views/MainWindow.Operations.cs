@@ -5,7 +5,7 @@ namespace ClockworkGit.Views;
 // Running git commands and the toolbar/menu operations: remote, commit, stage, stash, paused operations.
 public partial class MainWindow
 {
-    /// <summary>Runs one git command; shows its output on failure. Use inside <see cref="Do"/>.</summary>
+    /// <summary>Запускает одну команду Git и показывает её вывод при ошибке. Используйте внутри <see cref="Do"/>.</summary>
     async Task<bool> Exec(params string[] args)
     {
         var cmd = "git " + string.Join(' ', args);
@@ -21,7 +21,7 @@ public partial class MainWindow
         return true;
     }
 
-    /// <summary>Runs a modifying action with the toolbar disabled, then refreshes everything.</summary>
+    /// <summary>Не допускает повторного входа при _busy, отключает тулбар, показывает исключения действия и затем обновляет данные.</summary>
     async Task Do(Func<Task> action)
     {
         if (_busy || _repo == null) return;
@@ -45,7 +45,7 @@ public partial class MainWindow
 
     // ───────────── Remote ─────────────
 
-    /// <summary>Plain push, or push -u to the first remote when the branch has no upstream yet.</summary>
+    /// <summary>Обычный push или push -u в первый удалённый репозиторий, если у ветки ещё нет upstream.</summary>
     async Task PushCore()
     {
         if (_currentBranch == null)
@@ -83,10 +83,14 @@ public partial class MainWindow
         await Exec("push", "-u", remote, _currentBranch);
     }
 
+    /// <summary>Обрабатывает Pull и запускает <c>git pull</c> через общий обработчик операций.</summary>
     async void OnPull(object? sender, RoutedEventArgs e) => await Do(() => Exec("pull"));
+    /// <summary>Обрабатывает Push и отправляет текущую ветку, при необходимости задавая upstream.</summary>
     async void OnPush(object? sender, RoutedEventArgs e) => await Do(PushCore);
+    /// <summary>Получает данные со всех удалённых репозиториев и удаляет ссылки на удалённые ветки, которых больше нет.</summary>
     async void OnFetch(object? sender, RoutedEventArgs e) => await Do(() => Exec("fetch", "--all", "--prune"));
 
+    /// <summary>Сначала выполняет pull и запускает push только в случае успеха.</summary>
     async void OnSync(object? sender, RoutedEventArgs e) => await Do(async () =>
     {
         if (await Exec("pull")) await PushCore();
@@ -94,8 +98,10 @@ public partial class MainWindow
 
     // ───────────── Commit ─────────────
 
+    /// <summary>Запускает создание коммита с панели инструментов или из меню.</summary>
     async void OnCommit(object? sender, RoutedEventArgs e) => await CommitFlow();
 
+    /// <summary>Проверяет коммит, собирает его параметры, добавляет запрошенные файлы в индекс, создаёт коммит и при необходимости отправляет его.</summary>
     async Task CommitFlow()
     {
         var repo = _repo;
@@ -129,9 +135,10 @@ public partial class MainWindow
         });
     }
 
+    /// <summary>Обрабатывает команду отмены последнего коммита и передаёт выполнение защищённому сценарию soft reset.</summary>
     async void OnUndoCommit(object? sender, RoutedEventArgs e) => await UndoLastCommit();
 
-    /// <summary>git reset --soft HEAD~1, warning when the commit is already on a remote.</summary>
+    /// <summary>Выполняет git reset --soft HEAD~1 и предупреждает, если коммит уже находится в удалённом репозитории.</summary>
     async Task UndoLastCommit()
     {
         var repo = _repo;
@@ -157,20 +164,24 @@ public partial class MainWindow
 
     // ───────────── Stage / unstage / discard ─────────────
 
+    /// <summary>Возвращает выбранные файлы, только если панель файлов отображает рабочую копию.</summary>
     List<FileChange> SelectedWorkFiles() =>
         _filesOwner?.IsWorkingTree == true ? FilesList.SelectedItems?.OfType<FileChange>().ToList() ?? new() : new();
 
+    /// <summary>Добавляет выбранные файлы рабочей копии в индекс.</summary>
     async void OnStage(object? sender, RoutedEventArgs e) => await Stage(SelectedWorkFiles());
+    /// <summary>Удаляет выбранные файлы рабочей копии из индекса.</summary>
     async void OnUnstage(object? sender, RoutedEventArgs e) => await Unstage(SelectedWorkFiles());
+    /// <summary>Запрашивает подтверждение и отменяет изменения выбранных файлов рабочей копии.</summary>
     async void OnDiscard(object? sender, RoutedEventArgs e) => await Discard(SelectedWorkFiles());
 
-    /// <summary>Stages the given files, or everything when none are given.</summary>
+    /// <summary>Добавляет указанные файлы в индекс; пустой список означает git add -A для всего репозитория.</summary>
     Task Stage(List<FileChange> files) =>
         Do(() => files.Count == 0
             ? Exec("add", "-A")
             : Exec(["add", "-A", "--", .. files.Select(f => f.RelPath)]));
 
-    /// <summary>Unstages the given files, or everything when none are given.</summary>
+    /// <summary>Снимает изменения указанных файлов с индекса, сохраняя рабочую копию; пустой список означает все файлы.</summary>
     Task Unstage(List<FileChange> files) =>
         Do(() => _headHash == null
             ? Exec(["rm", "-r", "-q", "--cached", "--", .. files.Count == 0 ? ["."] : files.Select(f => f.RelPath)])
@@ -178,6 +189,7 @@ public partial class MainWindow
                 ? Exec("reset", "-q")
                 : Exec(["restore", "--staged", "--", .. files.Select(f => f.RelPath)]));
 
+    /// <summary>Запрашивает подтверждение перед восстановлением отслеживаемых файлов и удалением выбранных неотслеживаемых файлов.</summary>
     async Task Discard(List<FileChange> files)
     {
         if (files.Count == 0)
@@ -209,6 +221,7 @@ public partial class MainWindow
 
     // ───────────── Stash ─────────────
 
+    /// <summary>Запрашивает необязательное сообщение и сохраняет отслеживаемые изменения в stash.</summary>
     async void OnSaveStash(object? sender, RoutedEventArgs e)
     {
         if (_repo == null || _busy) return;
@@ -222,6 +235,7 @@ public partial class MainWindow
         await Do(() => message.Trim().Length == 0 ? Exec("stash", "push") : Exec("stash", "push", "-m", message.Trim()));
     }
 
+    /// <summary>Применяет самый новый stash, если существует хотя бы один.</summary>
     async void OnApplyStash(object? sender, RoutedEventArgs e)
     {
         if (_repo == null || _busy) return;
@@ -236,6 +250,7 @@ public partial class MainWindow
 
     // ───────────── Paused merge / cherry-pick / revert / rebase ─────────────
 
+    /// <summary>Продолжает текущую операцию merge, cherry-pick, revert или rebase.</summary>
     async void OnStateContinue(object? sender, RoutedEventArgs e)
     {
         var state = _repo?.GetState() ?? RepoState.Clean;
@@ -249,6 +264,7 @@ public partial class MainWindow
         });
     }
 
+    /// <summary>Запрашивает подтверждение и прерывает текущую операцию merge, cherry-pick, revert или rebase.</summary>
     async void OnStateAbort(object? sender, RoutedEventArgs e)
     {
         var op = (_repo?.GetState() ?? RepoState.Clean) switch
