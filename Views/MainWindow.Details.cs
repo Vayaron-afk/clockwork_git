@@ -91,7 +91,8 @@ public partial class MainWindow
         _ownerFiles = files;
         var shown = ShownFiles();
         FilesList.ItemsSource = shown;
-        var pick = shown.FirstOrDefault(f => f.RelPath == _pendingFile) ?? shown.FirstOrDefault();
+        var shownFiles = shown.OfType<FileChange>().ToList();
+        var pick = shownFiles.FirstOrDefault(f => f.RelPath == _pendingFile) ?? shownFiles.FirstOrDefault();
         _pendingFile = null;
         FilesList.SelectedItem = pick;
         if (pick == null) ShowDiff(null);
@@ -130,8 +131,44 @@ public partial class MainWindow
         RebindFiles();
     }
 
-    List<FileChange> ShownFiles() =>
-        SortFiles(LfsOnly.IsChecked == true ? _ownerFiles.Where(f => f.IsLfs) : _ownerFiles);
+    /// <summary>Sorted and filtered files; grouped by project, with a <see cref="FileGroup"/> header before each group.</summary>
+    List<object> ShownFiles()
+    {
+        var files = SortFiles(LfsOnly.IsChecked == true ? _ownerFiles.Where(f => f.IsLfs) : _ownerFiles);
+        return ByProject.IsChecked == true ? ProjectGrouping.Group(files, _projectRoots) : files.Cast<object>().ToList();
+    }
+
+    void OnByProjectChanged()
+    {
+        if (_repo == null) return;
+        var on = ByProject.IsChecked == true;
+        var listed = _settings.FilesByProject.Any(p => SamePath(p, _repo.Path));
+        if (on != listed)
+        {
+            if (on) _settings.FilesByProject.Add(_repo.Path);
+            else _settings.FilesByProject.RemoveAll(p => SamePath(p, _repo.Path));
+            _settings.Save();
+        }
+        RebindFiles();
+    }
+
+    /// <summary>A clicked group header stands for its files: they replace it in the selection.</summary>
+    void SelectGroups(List<FileGroup> groups)
+    {
+        _resortingFiles = true;
+        try
+        {
+            foreach (var g in groups) FilesList.SelectedItems?.Remove(g);
+            foreach (var f in groups.SelectMany(g => g.Files))
+                if (FilesList.SelectedItems?.Contains(f) != true)
+                    FilesList.SelectedItems?.Add(f);
+        }
+        finally
+        {
+            _resortingFiles = false;
+        }
+        ShowDiff(SingleSelectedFile());
+    }
 
     /// <summary>Re-applies sort and filter, keeping the selection (and its diff) when it is still visible.</summary>
     void RebindFiles()
@@ -151,7 +188,8 @@ public partial class MainWindow
             _resortingFiles = false;
         }
         if (kept.Count > 0) FilesList.ScrollIntoView(kept[0]);
-        else if (selected.Count > 0 && shown.Count > 0) FilesList.SelectedItem = shown[0]; // selection got filtered out
+        else if (selected.Count > 0 && shown.OfType<FileChange>().FirstOrDefault() is { } first)
+            FilesList.SelectedItem = first; // selection got filtered out
         else if (selected.Count > 0) ShowDiff(null);
         if (kept.Count > 0 && kept.Count != selected.Count) ShowDiff(kept.Count == 1 ? kept[0] : null);
     }

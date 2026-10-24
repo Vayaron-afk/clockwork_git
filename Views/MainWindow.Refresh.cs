@@ -21,7 +21,8 @@ public partial class MainWindow
         var tHead = repo.HeadHash();
         var tRemotes = repo.Remotes();
         var tRecyclable = repo.RecyclableCommits();
-        await Task.WhenAll(tRefs, tStashes, tStatus, tBranch, tHead, tRemotes, tRecyclable);
+        var tProjects = repo.ProjectRoots();
+        await Task.WhenAll(tRefs, tStashes, tStatus, tBranch, tHead, tRemotes, tRecyclable, tProjects);
         if (gen != _refreshGen || repo != _repo) return;
 
         _refs = tRefs.Result;
@@ -30,6 +31,7 @@ public partial class MainWindow
         _headHash = tHead.Result;
         _remotes = tRemotes.Result;
         _recyclable = tRecyclable.Result;
+        _projectRoots = tProjects.Result;
 
         BuildBranchTree(tStashes.Result);
         var repoItem = _repos.FirstOrDefault(r => SamePath(r.Path, repo.Path));

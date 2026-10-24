@@ -40,6 +40,8 @@ public partial class MainWindow
         ShowDiff(null);
         FilterBox.Text = "";
         _locks = new();
+        _projectRoots = new();
+        ByProject.IsChecked = _settings.FilesByProject.Any(p => SamePath(p, item.Path));
         await RefreshAll();
         _ = RefreshLocks(); // slow network call; badges appear when it returns
     }

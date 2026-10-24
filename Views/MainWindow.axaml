@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ui="using:ClockworkGit.Controls"
+        xmlns:m="using:ClockworkGit.Models"
         x:Class="ClockworkGit.Views.MainWindow"
         Title="ClockworkGit" Width="1600" Height="960"
         WindowStartupLocation="CenterScreen"
@@ -251,6 +252,8 @@
         <Border Grid.Row="3" Classes="header">
           <DockPanel>
             <CheckBox x:Name="LfsOnly" DockPanel.Dock="Right" Classes="small" Content="LFS only" FontSize="11" ToolTip.Tip="Show only files stored in Git LFS" />
+            <CheckBox x:Name="ByProject" DockPanel.Dock="Right" Classes="small" Content="By project" FontSize="11" Margin="0,0,10,0"
+                      ToolTip.Tip="Group files by project: the outermost folder with a .csproj, package.json or Unity ProjectSettings (remembered per repository)" />
             <TextBlock Classes="header" Text="Files" />
           </DockPanel>
         </Border>
@@ -260,8 +263,15 @@
           <Button x:Name="SortByPath" Grid.Column="3" Classes="colhead" Tag="Path" Click="OnSortFiles" ToolTip.Tip="Sort by full path" />
         </Grid>
         <ListBox x:Name="FilesList" Grid.Row="5" Classes="dense" SelectionMode="Multiple" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-          <ListBox.ItemTemplate>
-            <DataTemplate>
+          <ListBox.DataTemplates>
+            <DataTemplate DataType="m:FileGroup">
+              <DockPanel Height="20" Background="#2b2d31" Margin="-4,0" ToolTip.Tip="{Binding Tip}">
+                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="#d6d9de" Margin="6,0,0,0" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding CountText}" Foreground="#9aa0a6" FontSize="11" Margin="8,0,0,0" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding Location}" Foreground="#6d737a" FontSize="11" Margin="8,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+              </DockPanel>
+            </DataTemplate>
+            <DataTemplate DataType="m:FileChange">
               <Grid ColumnDefinitions="18,2*,84,3*" Height="20" ToolTip.Tip="{Binding RelPath}">
                 <TextBlock Text="{Binding StatusLetter}" Foreground="{Binding StatusBrush}" FontWeight="Bold" VerticalAlignment="Center" />
                 <DockPanel Grid.Column="1">
@@ -277,7 +287,7 @@
                 <TextBlock Grid.Column="3" Text="{Binding Folder}" Foreground="#7d838a" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
               </Grid>
             </DataTemplate>
-          </ListBox.ItemTemplate>
+          </ListBox.DataTemplates>
         </ListBox>
       </Grid>
 

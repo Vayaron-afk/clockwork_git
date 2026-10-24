@@ -33,6 +33,8 @@ public partial class MainWindow : Window
     /// <summary>The commit (or working tree) whose files are listed.</summary>
     CommitInfo? _filesOwner;
     List<FileChange> _ownerFiles = new();
+    /// <summary>Outermost project folders of the repository, for grouping the Files list.</summary>
+    List<string> _projectRoots = new();
     /// <summary>Diff shown in the bottom panel; the raw text is what partial staging builds patches from.</summary>
     DiffResult? _shownDiff;
     WorkTreeDiffMode _diffMode = WorkTreeDiffMode.Unstaged;
@@ -65,9 +67,15 @@ public partial class MainWindow : Window
         };
         GraphList.SelectionChanged += (_, _) => LoadDetails();
         FilterBox.TextChanged += (_, _) => ApplyFilter((GraphList.SelectedItem as CommitInfo)?.Hash);
-        FilesList.SelectionChanged += (_, _) =>
+        FilesList.SelectionChanged += (_, e) =>
         {
-            if (!_resortingFiles) ShowDiff(SingleSelectedFile());
+            if (_resortingFiles) return;
+            if (e.AddedItems.OfType<FileGroup>().ToList() is { Count: > 0 } groups)
+            {
+                SelectGroups(groups);
+                return;
+            }
+            ShowDiff(SingleSelectedFile());
         };
         FilesList.DoubleTapped += (_, e) =>
         {
@@ -76,6 +84,7 @@ public partial class MainWindow : Window
             else OpenCompare(f);
         };
         LfsOnly.IsCheckedChanged += (_, _) => RebindFiles();
+        ByProject.IsCheckedChanged += (_, _) => OnByProjectChanged();
         SvgAsText.IsCheckedChanged += (_, _) => ShowDiff(SingleSelectedFile());
         ModeUnstaged.IsCheckedChanged += (_, _) => OnDiffModeChosen(ModeUnstaged, WorkTreeDiffMode.Unstaged);
         ModeStaged.IsCheckedChanged += (_, _) => OnDiffModeChosen(ModeStaged, WorkTreeDiffMode.Staged);
