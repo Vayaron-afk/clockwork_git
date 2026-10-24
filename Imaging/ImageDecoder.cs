@@ -4,7 +4,10 @@ using SkiaSharp;
 
 namespace ClockworkGit.Imaging;
 
-/// <summary>Bytes of any supported format → RGBA8888 premultiplied <see cref="SKBitmap"/>.</summary>
+/// <summary>
+/// Bytes of any supported format → RGBA8888 <b>unpremultiplied</b> <see cref="SKBitmap"/>, so colour hidden
+/// under zero alpha survives (packed texture maps keep data there).
+/// </summary>
 public static class ImageDecoder
 {
     /// <summary>Null when there is no data or the format cannot be decoded.</summary>
@@ -13,17 +16,44 @@ public static class ImageDecoder
         if (data == null || data.Length == 0) return null;
         var ext = Path.GetExtension(path).ToLowerInvariant();
         var src = ext == ".tga" ? TgaDecoder.Decode(data) ?? DecodeMagick(data, ext)
-            : ImageFormats.SkiaExtensions.Contains(ext) ? SKBitmap.Decode(data) ?? DecodeMagick(data, ext)
+            : ImageFormats.SkiaExtensions.Contains(ext) ? DecodeSkia(data) ?? DecodeMagick(data, ext)
             : DecodeMagick(data, ext);
         if (src == null) return null;
-        var dst = new SKBitmap(new SKImageInfo(src.Width, src.Height, SKColorType.Rgba8888, SKAlphaType.Premul));
-        using (var canvas = new SKCanvas(dst))
+        var dst = new SKBitmap(new SKImageInfo(src.Width, src.Height, SKColorType.Rgba8888, SKAlphaType.Unpremul));
+        using var pixmap = src.PeekPixels();
+        if (pixmap == null || !pixmap.ReadPixels(dst.Info, dst.GetPixels(), dst.RowBytes))
         {
-            canvas.Clear(SKColors.Transparent);
-            canvas.DrawBitmap(src, 0, 0);
+            dst.Dispose();
+            dst = src.Copy(SKColorType.Rgba8888);
         }
-        src.Dispose();
+        if (!ReferenceEquals(dst, src)) src.Dispose();
         return dst;
+    }
+
+    /// <summary>Skia decode asking for unpremultiplied output, so it does not drop colour under transparent pixels.</summary>
+    static SKBitmap? DecodeSkia(byte[] data)
+    {
+        using var codec = SKCodec.Create(new MemoryStream(data));
+        if (codec == null) return SKBitmap.Decode(data);
+        var info = new SKImageInfo(codec.Info.Width, codec.Info.Height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+        var bmp = new SKBitmap(info);
+        var result = codec.GetPixels(info, bmp.GetPixels());
+        if (result is SKCodecResult.Success or SKCodecResult.IncompleteInput) return bmp;
+        bmp.Dispose();
+        return SKBitmap.Decode(data);
+    }
+
+    /// <summary>True when some pixel is not fully opaque.</summary>
+    public static bool UsesAlpha(SKBitmap b)
+    {
+        var px = b.GetPixelSpan();
+        for (var y = 0; y < b.Height; y++)
+        {
+            var row = y * b.RowBytes;
+            for (var x = 0; x < b.Width; x++)
+                if (px[row + x * 4 + 3] != 255) return true;
+        }
+        return false;
     }
 
     /// <summary>

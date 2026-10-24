@@ -7,6 +7,15 @@
       <RadioButton x:Name="ModeOnion" GroupName="imgmode" Content="Onion skin" />
       <RadioButton x:Name="ModeDiff" GroupName="imgmode" Content="Difference" />
       <Slider x:Name="OnionSlider" Width="160" Minimum="0" Maximum="1" Value="0.5" IsVisible="False" VerticalAlignment="Center" />
+      <ComboBox x:Name="ChannelBox" SelectedIndex="0" MinWidth="76" VerticalAlignment="Center"
+                ToolTip.Tip="Channels: RGB ignores alpha (shows colour under transparent pixels); R/G/B/A show one channel as grayscale, e.g. smoothness packed in A">
+        <ComboBoxItem Content="RGBA" />
+        <ComboBoxItem Content="RGB" />
+        <ComboBoxItem Content="R" />
+        <ComboBoxItem Content="G" />
+        <ComboBoxItem Content="B" />
+        <ComboBoxItem Content="A" />
+      </ComboBox>
       <ComboBox x:Name="ZoomBox" SelectedIndex="0" MinWidth="80" VerticalAlignment="Center" ToolTip.Tip="Zoom">
         <ComboBoxItem Content="Fit" />
         <ComboBoxItem Content="25%" />

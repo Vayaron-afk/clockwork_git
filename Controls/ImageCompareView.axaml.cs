@@ -15,6 +15,12 @@ public partial class ImageCompareView : UserControl
     int _gen;
     bool _syncing;
     int _maxWidth;
+    // Decoded sources (unpremultiplied) stay alive so switching channels does not decode again.
+    SKBitmap? _old, _new;
+    long _oldSize = -1, _newSize = -1;
+    Task _rendering = Task.CompletedTask;
+
+    ImageChannel Channel => (ImageChannel)Math.Clamp(ChannelBox.SelectedIndex, 0, 5);
 
     public ImageCompareView()
     {
@@ -28,6 +34,13 @@ public partial class ImageCompareView : UserControl
         ModeOnion.IsCheckedChanged += (_, _) => UpdateMode();
         ModeDiff.IsCheckedChanged += (_, _) => UpdateMode();
         ZoomBox.SelectionChanged += (_, _) => UpdateMode();
+        ChannelBox.SelectionChanged += async (_, _) =>
+        {
+            if (_old == null && _new == null) return;
+            _rendering = Render(_gen);
+            await _rendering;
+        };
+        DetachedFromVisualTree += async (_, _) => await ReleaseSources();
         OldScroll.ScrollChanged += (_, _) => Sync(OldScroll, NewScroll);
         NewScroll.ScrollChanged += (_, _) => Sync(NewScroll, OldScroll);
     }
@@ -40,11 +53,23 @@ public partial class ImageCompareView : UserControl
         _syncing = false;
     }
 
-    public void Clear()
+    public async void Clear()
     {
         _gen++;
         Info.Text = "";
         SetImages(null, null, null);
+        await ReleaseSources();
+    }
+
+    /// <summary>Waits for a running render before disposing the bitmaps it reads.</summary>
+    async Task ReleaseSources()
+    {
+        var oldSrc = _old;
+        var newSrc = _new;
+        _old = _new = null;
+        try { await _rendering; } catch (Exception) { /* the render's own problem; sources go anyway */ }
+        oldSrc?.Dispose();
+        newSrc?.Dispose();
     }
 
     /// <summary>Decodes both versions off the UI thread; a newer call cancels an older one.</summary>
@@ -53,43 +78,64 @@ public partial class ImageCompareView : UserControl
         var gen = ++_gen;
         Info.Text = "Loading…";
         SetImages(null, null, null);
+        await ReleaseSources();
 
-        var (oldSk, newSk, diffSk, changed) = await Task.Run(() =>
+        var (o, n) = await Task.Run(() => (ImageDecoder.Decode(oldBytes, path), ImageDecoder.Decode(newBytes, path)));
+        if (gen != _gen)
         {
-            var o = ImageDecoder.Decode(oldBytes, path);
-            var n = ImageDecoder.Decode(newBytes, path);
-            SKBitmap? d = null;
-            double pct = -1;
-            if (o != null && n != null) (d, pct) = PixelDiff.Compute(o, n);
-            return (o, n, d, pct);
+            o?.Dispose();
+            n?.Dispose();
+            return;
+        }
+        _old = o;
+        _new = n;
+        _oldSize = oldBytes?.Length ?? -1;
+        _newSize = newBytes?.Length ?? -1;
+        _maxWidth = Math.Max(o?.Width ?? 0, n?.Width ?? 0);
+        _rendering = Render(gen);
+        await _rendering;
+    }
+
+    /// <summary>Builds the shown bitmaps and the difference for the selected channel.</summary>
+    async Task Render(int gen)
+    {
+        var (o, n, channel) = (_old, _new, Channel);
+        var result = await Task.Run(() =>
+        {
+            var oldImage = o == null ? null : AvaloniaBitmaps.Render(o, channel);
+            var newImage = n == null ? null : AvaloniaBitmaps.Render(n, channel);
+            RenderedImage? diffImage = null;
+            double changed = -1;
+            if (o != null && n != null)
+            {
+                var (diff, pct) = PixelDiff.Compute(o, n, channel);
+                diffImage = AvaloniaBitmaps.Render(diff);
+                diff.Dispose();
+                changed = pct;
+            }
+            var alpha = n != null ? ImageDecoder.UsesAlpha(n) : o != null && ImageDecoder.UsesAlpha(o);
+            return (oldImage, newImage, diffImage, changed, alpha);
         });
+        if (gen != _gen) return;
 
-        try
-        {
-            if (gen != _gen) return;
-            SetImages(
-                oldSk == null ? null : AvaloniaBitmaps.ToAvalonia(oldSk),
-                newSk == null ? null : AvaloniaBitmaps.ToAvalonia(newSk),
-                diffSk == null ? null : AvaloniaBitmaps.ToAvalonia(diffSk));
+        SetImages(
+            result.oldImage == null ? null : AvaloniaBitmaps.ToAvalonia(result.oldImage),
+            result.newImage == null ? null : AvaloniaBitmaps.ToAvalonia(result.newImage),
+            result.diffImage == null ? null : AvaloniaBitmaps.ToAvalonia(result.diffImage));
 
-            static string Describe(SKBitmap? b, byte[]? bytes) =>
-                bytes == null ? "—"
-                : b == null ? $"unsupported format, {Format.Size(bytes.Length)}"
-                : $"{b.Width}×{b.Height}, {Format.Size(bytes.Length)}";
+        string Describe(SKBitmap? b, long size) =>
+            size < 0 ? "—"
+            : b == null ? $"unsupported format, {Format.Size(size)}"
+            : $"{b.Width}×{b.Height}, {Format.Size(size)}";
 
-            var info = $"Old: {Describe(oldSk, oldBytes)}   New: {Describe(newSk, newBytes)}";
-            if (changed >= 0) info += changed == 0 ? "   · pixels identical" : $"   · changed {changed:0.###}% of pixels";
-            if (oldSk != null && newSk != null && (oldSk.Width != newSk.Width || oldSk.Height != newSk.Height)) info += "   · size differs";
-            Info.Text = info;
-            _maxWidth = Math.Max(oldSk?.Width ?? 0, newSk?.Width ?? 0);
-            UpdateMode();
-        }
-        finally
-        {
-            oldSk?.Dispose();
-            newSk?.Dispose();
-            diffSk?.Dispose();
-        }
+        var info = $"Old: {Describe(o, _oldSize)}   New: {Describe(n, _newSize)}";
+        var scope = channel == ImageChannel.RGBA ? "" : $" in {channel}";
+        if (result.changed >= 0)
+            info += result.changed == 0 ? $"   · pixels identical{scope}" : $"   · changed {result.changed:0.###}% of pixels{scope}";
+        if (o != null && n != null && (o.Width != n.Width || o.Height != n.Height)) info += "   · size differs";
+        if (o != null || n != null) info += result.alpha ? "   · alpha used" : "   · alpha unused (fully opaque)";
+        Info.Text = info;
+        UpdateMode();
     }
 
     void SetImages(Bitmap? oldImage, Bitmap? newImage, Bitmap? diffImage)
