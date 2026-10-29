@@ -33,14 +33,16 @@ public static class ImageDecoder
     /// <summary>Декодирование Skia без предварительного умножения цветовых компонентов на альфа-канал, сохраняющее цвет прозрачных пикселей.</summary>
     static SKBitmap? DecodeSkia(byte[] data)
     {
+        // Skia не распознала данные (не картинка, LFS-указатель, обрезанный файл) — дальше пробует Magick.
+        // SKBitmap.Decode здесь не годится: на таких данных он бросает ArgumentNullException вместо null.
         using var codec = SKCodec.Create(new MemoryStream(data));
-        if (codec == null) return SKBitmap.Decode(data);
+        if (codec == null) return null;
         var info = new SKImageInfo(codec.Info.Width, codec.Info.Height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
         var bmp = new SKBitmap(info);
         var result = codec.GetPixels(info, bmp.GetPixels());
         if (result is SKCodecResult.Success or SKCodecResult.IncompleteInput) return bmp;
         bmp.Dispose();
-        return SKBitmap.Decode(data);
+        return null;
     }
 
     /// <summary>Возвращает true, если хотя бы один пиксель не полностью непрозрачен (альфа меньше 255, включая ноль).</summary>
