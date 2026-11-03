@@ -57,6 +57,7 @@
         <MenuItem Header="_Refresh" InputGesture="F5" Click="OnRefresh" />
         <MenuItem Header="Open in _Explorer" Click="OnOpenExplorer" />
         <MenuItem Header="Git _LFS…" Click="OnOpenLfs" />
+        <MenuItem Header="_Unlock index…" Click="OnUnlockIndex" />
         <Separator />
         <MenuItem Header="Fetch _all repositories now" Click="OnFetchAllRepos" />
         <MenuItem x:Name="AutoFetchMenu" Header="Auto-_fetch">
@@ -131,6 +132,9 @@
         </StackPanel>
 
         <StackPanel Grid.Column="4" Orientation="Horizontal">
+          <Button Classes="tool" Click="OnUnlockIndex" ToolTip.Tip="Inspect and remove a leftover index.lock">
+            <StackPanel><TextBlock Classes="glyph" Text="&#xE785;" Foreground="#e0c050" /><TextBlock Classes="label" Text="Unlock index" /></StackPanel>
+          </Button>
           <Button Classes="tool" Click="OnOpenLfs" ToolTip.Tip="Git LFS: files, rules, maintenance">
             <StackPanel><TextBlock Classes="glyph" Text="&#xE7B8;" Foreground="#a990ff" /><TextBlock Classes="label" Text="LFS" /></StackPanel>
           </Button>

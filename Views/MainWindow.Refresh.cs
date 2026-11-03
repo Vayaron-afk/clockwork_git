@@ -5,8 +5,24 @@ namespace ClockworkGit.Views;
 // Refreshes repository data and updates the graph, status bar, and operation banner.
 public partial class MainWindow
 {
+    bool _showingRefreshError;
+
     /// <summary>Обновляет ссылки, stash, состояние рабочей копии, данные графа и корневые каталоги проектов открытого репозитория.</summary>
     async Task RefreshAll()
+    {
+        if (_showingRefreshError) return;
+        try { await RefreshCore(); }
+        catch (Exception ex)
+        {
+            SetStatus("Repository refresh failed: " + ex.Message);
+            if (_showingRefreshError) return;
+            _showingRefreshError = true;
+            try { await Dialogs.ShowMessage(this, "Repository refresh failed", ex.Message); }
+            finally { _showingRefreshError = false; }
+        }
+    }
+
+    async Task RefreshCore()
     {
         var repo = _repo;
         if (repo == null) return;

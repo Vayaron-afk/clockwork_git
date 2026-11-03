@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Text;
 
@@ -7,6 +8,19 @@ namespace ClockworkGit.Git;
 /// <remarks>Графический вход через Git Credential Manager отключается отдельно, через <see cref="NoLoginPrompt"/>.</remarks>
 public static class GitRunner
 {
+    static readonly ConcurrentDictionary<string, SemaphoreSlim> Gates = new(OperatingSystem.IsWindows()
+        ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+
+    /// <summary>Выполняет последовательность команд или обслуживание индекса без параллельных команд клиента в этом репозитории.</summary>
+    internal static async Task<T> WithRepositoryLockAsync<T>(string repo, Func<GitCommandScope, Task<T>> action)
+    {
+        var key = Path.TrimEndingDirectorySeparator(Path.GetFullPath(repo));
+        var gate = Gates.GetOrAdd(key, _ => new SemaphoreSlim(1, 1));
+        await gate.WaitAsync();
+        try { return await action(new GitCommandScope(repo)); }
+        finally { gate.Release(); }
+    }
+
     /// <summary>Для фоновых запросов к серверу: завершаться с ошибкой вместо открытия входа через Git Credential Manager.</summary>
     public static readonly IReadOnlyDictionary<string, string> NoLoginPrompt = new Dictionary<string, string> { ["GCM_INTERACTIVE"] = "never" };
 
@@ -35,6 +49,7 @@ public static class GitRunner
         psi.Environment["GIT_EDITOR"] = "true";
         psi.Environment["GIT_SEQUENCE_EDITOR"] = "true";
         psi.Environment["GIT_MERGE_AUTOEDIT"] = "no";
+        psi.Environment["GIT_OPTIONAL_LOCKS"] = "0";
         if (env != null)
             foreach (var (name, value) in env) psi.Environment[name] = value;
         return psi;
@@ -45,15 +60,15 @@ public static class GitRunner
 
     /// <summary>Запускает команду Git и при необходимости передаёт текст в стандартный ввод.</summary>
     public static Task<GitResult> RunWithInputAsync(string repo, string? input, params string[] args) =>
-        RunCoreAsync(repo, input, null, args);
+        WithRepositoryLockAsync(repo, _ => RunCoreAsync(repo, input, null, args));
 
     /// <summary>Запускает команду с дополнительными переменными среды, например скриптовым GIT_SEQUENCE_EDITOR для интерактивного rebase.</summary>
     public static Task<GitResult> RunWithEnvAsync(string repo, IReadOnlyDictionary<string, string> env, params string[] args) =>
-        RunCoreAsync(repo, null, env, args);
+        WithRepositoryLockAsync(repo, _ => RunCoreAsync(repo, null, env, args));
 
     /// <summary>Запускает Git, считывает оба потока вывода, при необходимости передаёт ввод и возвращает результат выполнения.</summary>
     /// <remarks>Ожидание не имеет таймаута или отмены. Исключение преобразуется в результат с кодом -1 и текстом ошибки.</remarks>
-    static async Task<GitResult> RunCoreAsync(string repo, string? input, IReadOnlyDictionary<string, string>? env, string[] args)
+    internal static async Task<GitResult> RunCoreAsync(string repo, string? input, IReadOnlyDictionary<string, string>? env, string[] args)
     {
         try
         {
@@ -72,7 +87,10 @@ public static class GitRunner
     }
 
     /// <summary>Запускает Git и возвращает исходный стандартный вывод при успехе или null при ошибке.</summary>
-    public static async Task<byte[]?> ReadBytesAsync(string repo, params string[] args)
+    public static Task<byte[]?> ReadBytesAsync(string repo, params string[] args) =>
+        WithRepositoryLockAsync(repo, _ => ReadBytesCoreAsync(repo, args));
+
+    static async Task<byte[]?> ReadBytesCoreAsync(string repo, string[] args)
     {
         try
         {

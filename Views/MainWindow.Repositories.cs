@@ -26,6 +26,7 @@ public partial class MainWindow
     /// <summary>Открывает репозиторий из списка, восстанавливает сохранённое состояние представления и обновляет данные.</summary>
     async Task OpenRepo(RepoItem item)
     {
+        if (_busy) return;
         var repo = Directory.Exists(item.Path) ? await GitRepo.Open(item.Path) : null;
         if (repo == null)
         {

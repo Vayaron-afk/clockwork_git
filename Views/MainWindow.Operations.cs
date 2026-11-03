@@ -27,6 +27,7 @@ public partial class MainWindow
         if (_busy || _repo == null) return;
         _busy = true;
         Toolbar.IsEnabled = false;
+        ReposList.IsEnabled = false;
         try
         {
             await action();
@@ -39,6 +40,7 @@ public partial class MainWindow
         {
             _busy = false;
             Toolbar.IsEnabled = true;
+            ReposList.IsEnabled = true;
             await RefreshAll();
         }
     }
@@ -102,38 +104,47 @@ public partial class MainWindow
     async void OnCommit(object? sender, RoutedEventArgs e) => await CommitFlow();
 
     /// <summary>Проверяет коммит, собирает его параметры, добавляет запрошенные файлы в индекс, создаёт коммит и при необходимости отправляет его.</summary>
-    async Task CommitFlow()
+    Task CommitFlow() => Do(async () =>
     {
-        var repo = _repo;
-        if (repo == null || _busy) return;
-        var staged = _workFiles.Count(f => f.IsStaged);
+        var repo = _repo!;
+        await repo.CheckIndexAsync();
+        var files = await repo.Status();
+        var staged = files.Count(f => f.IsStaged);
         SetStatus("Checking the commit…");
-        var checkAll = CommitChecks.Run(repo, _workFiles, stageAll: true, _locks);
-        var checkStaged = CommitChecks.Run(repo, _workFiles, stageAll: false, _locks);
+        var checkAll = CommitChecks.Run(repo, files, stageAll: true, _locks);
+        var checkStaged = CommitChecks.Run(repo, files, stageAll: false, _locks);
         await Task.WhenAll(checkAll, checkStaged);
         SetStatus("");
-        var request = await Dialogs.Commit(this, staged, _workFiles.Count, _undoneMessage, () => repo.CommitMessage("HEAD"),
+        var request = await Dialogs.Commit(this, staged, files.Count, _undoneMessage, () => repo.CommitMessage("HEAD"),
             all => all ? checkAll.Result : checkStaged.Result);
         if (request == null) return;
-        await Do(async () =>
+        if (request.StageAll && !await Exec("add", "-A")) return;
+        if (request.StageFirst.Count > 0 && !await Exec(["add", "-A", "--", .. request.StageFirst])) return;
+        var snapshot = await repo.ValidateCommitAsync(request.Amend);
+        var expectedPaths = files.Where(f => f.IsStaged || request.StageAll).Select(f => f.RelPath)
+            .Concat(request.StageFirst).ToHashSet(StringComparer.Ordinal);
+        if (snapshot.Files.Any(f => f.IsStaged && !expectedPaths.Contains(f.RelPath)))
+            throw new InvalidOperationException("Additional staged files appeared while the commit dialog was open. Review the staged changes before committing.");
+        var deletionsOnDisk = snapshot.Files.Where(f => f.IndexStatus == 'D'
+            && (File.Exists(repo.FullPath(f.RelPath)) || Directory.Exists(repo.FullPath(f.RelPath)))).ToList();
+        if (deletionsOnDisk.Count >= 20 && !await Dialogs.Confirm(this, "Review staged deletions",
+                $"{deletionsOnDisk.Count} staged deletions still exist on disk. This commit will stop tracking them.\n\n"
+                + string.Join("\n", deletionsOnDisk.Take(10).Select(f => f.RelPath))
+                + "\n\nCommit these deletions?", "Commit deletions")) return;
+        var tmp = GitRepo.WriteTempMessage(request.Message);
+        try
         {
-            if (request.StageAll && !await Exec("add", "-A")) return;
-            if (request.StageFirst.Count > 0 && !await Exec(["add", "-A", "--", .. request.StageFirst])) return;
-            var tmp = GitRepo.WriteTempMessage(request.Message);
-            try
-            {
-                var args = new List<string> { "commit", "-F", tmp };
-                if (request.Amend) args.Add("--amend");
-                if (!await Exec(args.ToArray())) return;
-            }
-            finally
-            {
-                File.Delete(tmp);
-            }
-            _undoneMessage = null;
-            if (request.Push) await PushCore();
-        });
-    }
+            SetStatus("Creating commit…");
+            await repo.CommitAsync(tmp, request.Amend, snapshot);
+        }
+        finally
+        {
+            File.Delete(tmp);
+        }
+        _undoneMessage = null;
+        SetStatus("Commit created.");
+        if (request.Push) await PushCore();
+    });
 
     /// <summary>Обрабатывает команду отмены последнего коммита и передаёт выполнение защищённому сценарию soft reset.</summary>
     async void OnUndoCommit(object? sender, RoutedEventArgs e) => await UndoLastCommit();
@@ -176,18 +187,20 @@ public partial class MainWindow
     async void OnDiscard(object? sender, RoutedEventArgs e) => await Discard(SelectedWorkFiles());
 
     /// <summary>Добавляет указанные файлы в индекс; пустой список означает git add -A для всего репозитория.</summary>
-    Task Stage(List<FileChange> files) =>
-        Do(() => files.Count == 0
-            ? Exec("add", "-A")
-            : Exec(["add", "-A", "--", .. files.Select(f => f.RelPath)]));
+    Task Stage(List<FileChange> files) => Do(async () =>
+    {
+        await _repo!.CheckIndexAsync();
+        if (files.Count == 0) await Exec("add", "-A");
+        else await Exec(["add", "-A", "--", .. files.Select(f => f.RelPath)]);
+    });
 
-    /// <summary>Снимает изменения указанных файлов с индекса, сохраняя рабочую копию; пустой список означает все файлы.</summary>
-    Task Unstage(List<FileChange> files) =>
-        Do(() => _headHash == null
-            ? Exec(["rm", "-r", "-q", "--cached", "--", .. files.Count == 0 ? ["."] : files.Select(f => f.RelPath)])
-            : files.Count == 0
-                ? Exec("reset", "-q")
-                : Exec(["restore", "--staged", "--", .. files.Select(f => f.RelPath)]));
+    /// <summary>Снимает изменения с индекса по заново проверенному HEAD, сохраняя рабочие файлы.</summary>
+    Task Unstage(List<FileChange> files) => Do(async () =>
+    {
+        SetStatus("Unstaging…");
+        await _repo!.UnstageAsync(files.Select(f => f.RelPath).ToArray());
+        SetStatus("Changes unstaged; working files preserved.");
+    });
 
     /// <summary>Запрашивает подтверждение перед восстановлением отслеживаемых файлов и удалением выбранных неотслеживаемых файлов.</summary>
     async Task Discard(List<FileChange> files)

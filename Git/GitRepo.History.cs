@@ -10,12 +10,8 @@ public sealed partial class GitRepo
         return r.Ok ? r.Output.Trim() : null;
     }
 
-    /// <summary>Возвращает хеш HEAD или null при ошибке его определения, в том числе до первого коммита.</summary>
-    public async Task<string?> HeadHash()
-    {
-        var r = await Run("rev-parse", "-q", "--verify", "HEAD");
-        return r.Ok ? r.Output.Trim() : null;
-    }
+    /// <summary>Возвращает хеш HEAD; null означает только подтверждённую ветку без первого коммита. Ошибки Git не скрываются.</summary>
+    public Task<string?> HeadHash() => GitRunner.WithRepositoryLockAsync(Path, ReadHead);
 
     /// <summary>Возвращает имена настроенных удалённых репозиториев.</summary>
     public async Task<List<string>> Remotes()
@@ -103,8 +99,15 @@ public sealed partial class GitRepo
     public async Task<List<FileChange>> Status()
     {
         var r = await Run("status", "--porcelain=v1", "-z", "-uall");
+        if (!r.Ok)
+            throw new InvalidOperationException($"Cannot read repository status:\n{r.Message}");
+        return ParseStatus(r.Output);
+    }
+
+    static List<FileChange> ParseStatus(string output)
+    {
         var list = new List<FileChange>();
-        var t = r.Output.Split('\0');
+        var t = output.Split('\0');
         for (var i = 0; i < t.Length; i++)
         {
             var e = t[i];
