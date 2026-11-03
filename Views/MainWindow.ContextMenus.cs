@@ -142,9 +142,9 @@ public partial class MainWindow
         }
         if (_filesOwner?.IsWorkingTree == true)
         {
-            menu.Items.Add(Item("Stage", () => Stage(files)));
-            menu.Items.Add(Item("Unstage", () => Unstage(files)));
-            menu.Items.Add(Item("Discard…", () => Discard(files)));
+            menu.Items.Add(Item("Stage\tCtrl+T", () => Stage(files)));
+            menu.Items.Add(Item("Unstage\tCtrl+U", () => Unstage(files)));
+            menu.Items.Add(Item("Discard…\tCtrl+Z", () => Discard(files)));
             var conflicts = files.Where(f => f.IsConflict).Select(f => f.RelPath).ToArray();
             if (conflicts.Length > 0)
             {

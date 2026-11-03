@@ -73,9 +73,9 @@
         <MenuItem Header="_Commit…" InputGesture="Ctrl+K" Click="OnCommit" />
         <MenuItem Header="_Undo Last Commit" Click="OnUndoCommit" />
         <Separator />
-        <MenuItem Header="_Stage" Click="OnStage" />
-        <MenuItem Header="U_nstage" Click="OnUnstage" />
-        <MenuItem Header="_Discard…" Click="OnDiscard" />
+        <MenuItem Header="_Stage" InputGesture="Ctrl+T" Click="OnStage" />
+        <MenuItem Header="U_nstage" InputGesture="Ctrl+U" Click="OnUnstage" />
+        <MenuItem Header="_Discard…" InputGesture="Ctrl+Z" Click="OnDiscard" />
         <Separator />
         <MenuItem Header="Save S_tash…" Click="OnSaveStash" />
         <MenuItem Header="_Apply Stash" Click="OnApplyStash" />
@@ -113,13 +113,13 @@
             <StackPanel><TextBlock Classes="glyph" Text="&#xE7A7;" /><TextBlock Classes="label" Text="Undo Commit" /></StackPanel>
           </Button>
           <Border Width="1" Background="#3c3f41" Margin="6,4" />
-          <Button Classes="tool" Click="OnStage">
+          <Button Classes="tool" Click="OnStage" ToolTip.Tip="Stage (Ctrl+T)">
             <StackPanel><TextBlock Classes="glyph" Text="&#xE710;" /><TextBlock Classes="label" Text="Stage" /></StackPanel>
           </Button>
-          <Button Classes="tool" Click="OnUnstage">
+          <Button Classes="tool" Click="OnUnstage" ToolTip.Tip="Unstage (Ctrl+U)">
             <StackPanel><TextBlock Classes="glyph" Text="&#xE738;" /><TextBlock Classes="label" Text="Unstage" /></StackPanel>
           </Button>
-          <Button Classes="tool" Click="OnDiscard">
+          <Button Classes="tool" Click="OnDiscard" ToolTip.Tip="Discard selected changes (Ctrl+Z)">
             <StackPanel><TextBlock Classes="glyph" Text="&#xE74D;" Foreground="#e06060" /><TextBlock Classes="label" Text="Discard" /></StackPanel>
           </Button>
           <Border Width="1" Background="#3c3f41" Margin="6,4" />

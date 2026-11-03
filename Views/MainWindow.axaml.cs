@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.VisualTree;
 
 namespace ClockworkGit.Views;
 
@@ -132,7 +133,7 @@ public partial class MainWindow : Window
         if (Clipboard != null) await Clipboard.SetTextAsync(text);
     }
 
-    /// <summary>Обрабатывает сочетания клавиш окна для обновления, создания коммита и частичного добавления изменений в индекс.</summary>
+    /// <summary>Обрабатывает сочетания клавиш окна и операций с файлами, сохраняя обычное редактирование текста.</summary>
     async void OnKey(object? sender, KeyEventArgs e)
     {
         if (e.Key == Key.F5)
@@ -144,6 +145,26 @@ public partial class MainWindow : Window
         {
             e.Handled = true;
             await CommitFlow();
+        }
+        else if (e.Key is (Key.T or Key.U or Key.Z) && e.KeyModifiers == KeyModifiers.Control)
+        {
+            if (_busy || _repo == null || _filesOwner?.IsWorkingTree != true) return;
+            // Не перехватываем Ctrl+Z (Undo) и другие сочетания внутри текстовых полей.
+            if (e.Source is Control control && control.GetSelfAndVisualAncestors().OfType<TextBox>().Any()) return;
+            e.Handled = true;
+            var files = SelectedWorkFiles();
+            switch (e.Key)
+            {
+                case Key.T:
+                    await Stage(files);
+                    break;
+                case Key.U:
+                    await Unstage(files);
+                    break;
+                case Key.Z:
+                    await Discard(files);
+                    break;
+            }
         }
         else if (e.Key is (Key.B or Key.L) && e.KeyModifiers == KeyModifiers.Control && StagePanel.IsVisible)
         {
