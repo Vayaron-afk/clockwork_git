@@ -234,6 +234,23 @@ public partial class MainWindow
         e.Handled = true;
     }
 
+    /// <summary>Создаёт локальную ветку от HEAD и переключается на неё без настройки upstream.</summary>
+    async Task CreateBranch()
+    {
+        if (_repo == null || _busy) return;
+        await Do(async () =>
+        {
+            var name = await Dialogs.Prompt(this, "Create branch",
+                "New local branch name (created at HEAD and checked out):");
+            if (string.IsNullOrWhiteSpace(name)) return;
+            // --no-track overrides branch.autoSetupMerge, including 'inherit'.
+            await Exec("switch", "--no-track", "-c", name.Trim());
+        });
+    }
+
+    /// <summary>Обрабатывает создание ветки из меню Local.</summary>
+    async void OnCreateBranch(object? sender, Avalonia.Interactivity.RoutedEventArgs e) => await CreateBranch();
+
     /// <summary>Переключается на локальную ветку или создаёт отслеживающую ветку из узла удалённой ветки.</summary>
     async Task CheckoutBranch(BranchNode n)
     {

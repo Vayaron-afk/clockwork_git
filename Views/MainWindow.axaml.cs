@@ -141,6 +141,11 @@ public partial class MainWindow : Window
             e.Handled = true;
             await RefreshAll();
         }
+        else if (e.Key == Key.F7 && e.KeyModifiers == KeyModifiers.None)
+        {
+            e.Handled = true;
+            await CreateBranch();
+        }
         else if (e.Key == Key.K && e.KeyModifiers == KeyModifiers.Control)
         {
             e.Handled = true;

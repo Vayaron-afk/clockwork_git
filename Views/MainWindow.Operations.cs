@@ -47,7 +47,7 @@ public partial class MainWindow
 
     // ───────────── Remote ─────────────
 
-    /// <summary>Обычный push или push -u в первый удалённый репозиторий, если у ветки ещё нет upstream.</summary>
+    /// <summary>Обычный push или push -u в origin (либо первый удалённый репозиторий), если у ветки ещё нет upstream.</summary>
     async Task PushCore()
     {
         if (_currentBranch == null)
@@ -76,7 +76,7 @@ public partial class MainWindow
                 await Dialogs.ShowMessage(this, "git push failed", r.Message);
             return;
         }
-        var remote = _remotes.FirstOrDefault();
+        var remote = _remotes.FirstOrDefault(r => r == "origin") ?? _remotes.FirstOrDefault();
         if (remote == null)
         {
             await Dialogs.ShowMessage(this, "Push", "The repository has no remotes.");

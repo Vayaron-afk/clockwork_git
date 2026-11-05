@@ -70,6 +70,8 @@
         <MenuItem Header="E_xit" Click="OnExit" />
       </MenuItem>
       <MenuItem Header="_Local">
+        <MenuItem Header="New _Branch…" InputGesture="F7" Click="OnCreateBranch" />
+        <Separator />
         <MenuItem Header="_Commit…" InputGesture="Ctrl+K" Click="OnCommit" />
         <MenuItem Header="_Undo Last Commit" Click="OnUndoCommit" />
         <Separator />
